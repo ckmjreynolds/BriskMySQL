@@ -1,0 +1,70 @@
+# **************************************************************************************
+# MIT License
+#
+# .swiftlint.yml - Copyright (c) 2019 Chris Reynolds
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+#  History:
+#
+#  Date        Author  Description
+#  ----        ------  -----------
+#  2019-12-24  CDR     Initial Version
+# **************************************************************************************
+excluded:
+  - .build/
+  - Tests/LinuxMain.swift
+  - Tests/AppTests/XCTestManifests.swift
+
+file_header:
+    required_string:  // *********************************************************************************************************************
+    required_string:  // MIT License
+    required_string:  //
+    required_string:  // SWIFTLINT_CURRENT_FILENAME - Copyright (c) 2019, 2020 Chris Reynolds
+    required_string:  //
+    required_string:  // Permission is hereby granted, free of charge, to any person obtaining a copy
+    required_string:  // of this software and associated documentation files (the "Software"), to deal
+    required_string:  // in the Software without restriction, including without limitation the rights
+    required_string:  // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    required_string:  // copies of the Software, and to permit persons to whom the Software is
+    required_string:  "// furnished to do so, subject to the following conditions:"
+    required_string:  //
+    required_string:  // The above copyright notice and this permission notice shall be included in all
+    required_string:  // copies or substantial portions of the Software.
+    required_string:  //
+    required_string:  // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    required_string:  // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    required_string:  // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    required_string:  // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    required_string:  // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    required_string:  // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    required_string:  // SOFTWARE.
+    required_string:  //
+    required_string:  "//  History:"
+    required_string:  //
+    required_string:  //  Date        Author  Description
+    required_string:  //  ----        ------  -----------
+    required_pattern: //  \d{4}-\d{2}-\d{2} CDR Initial Version
+    required_string:  // *********************************************************************************************************************
+
+identifier_name:
+  excluded:
+
+opt_in_rules:
+  - file_header
