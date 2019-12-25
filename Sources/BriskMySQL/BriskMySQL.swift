@@ -28,5 +28,6 @@
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
 struct BriskMySQL {
-    var text = "Hello, World!"
+    let text = "Hello, World!"
+    test = "test"
 }

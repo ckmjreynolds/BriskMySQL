@@ -27,7 +27,7 @@
 #  ----        ------  -----------
 #  2019-12-24  CDR     Initial Version
 # **************************************************************************************
-name: Swift - Build and Test
+name: build
 
 on: [push]
 
@@ -38,5 +38,5 @@ jobs:
     - uses: actions/checkout@v1
     - name: Build
       run: swift build -v
-    - name: Run tests
+    - name: Test
       run: swift test -v
