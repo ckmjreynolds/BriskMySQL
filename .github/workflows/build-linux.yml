@@ -25,21 +25,21 @@
 #
 #  Date        Author  Description
 #  ----        ------  -----------
-#  2019-12-24  CDR     Initial Version
+#  2019-12-25  CDR     Initial Version
 # **************************************************************************************
-name: build
+name: build-linux
 
 on: [push]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macOS-latest, ubuntu-18.04]
+    runs-on: ubuntu-latest
+
+    container:
+        image: swift:latest
     steps:
-    - uses: actions/checkout@v1
-    - name: Build
-      run: swift build -v
-    - name: Test
-      run: swift test -v
+        - uses: actions/checkout@v1
+        - name: Build
+          run: swift build
+        - name: Test
+          run: swift test
