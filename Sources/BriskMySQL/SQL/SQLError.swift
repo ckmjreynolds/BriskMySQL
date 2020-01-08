@@ -1,7 +1,7 @@
 // *********************************************************************************************************************
 // MIT License
 //
-// BriskMySQL.swift - Copyright (c) 2019 Chris Reynolds
+// Copyright (c) 2019, 2020 Chris Reynolds
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,12 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-struct BriskMySQL {
-    let text = "Hello, World!"
+import NIO
+
+public enum SQLError: String, Error, CustomStringConvertible {
+    public var description: String { self.rawValue }
+
+    case notImplemented = "Feature not implemented."
+    case invalidURL = "Invalid URL."
+    case protocolError = "Error decoding protocol."
 }

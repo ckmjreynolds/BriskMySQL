@@ -1,4 +1,3 @@
-// swift-tools-version:5.1
 // *********************************************************************************************************************
 // MIT License
 //
@@ -28,25 +27,18 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-import PackageDescription
+import NIO
 
-let package = Package(
-    name: "BriskMySQL",
-    products: [
-        // Products define the executables and libraries produced by a package, and make them visible to other packages.
-        .library(name: "BriskMySQL", targets: ["BriskMySQL"])
-    ],
-    dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-nio.git", .exact("2.12.0")),
-        .package(url: "https://github.com/apple/swift-nio-ssl.git", .exact("2.5.0")),
-        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .exact("1.3.0"))
-    ],
-    targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in dependencies.
-        .target(name: "BriskMySQL", dependencies: ["NIO", "NIOSSL", "CryptoSwift"]),
-        .testTarget(name: "BriskMySQLTests", dependencies: ["BriskMySQL"])
-    ]
-)
+internal struct MySQLPacketDecoder: ByteToMessageDecoder {
+    typealias InboundOut = MySQLPacket
+
+    mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+        guard let packet = MySQLPacket(buffer: &buffer) else { return .needMoreData }
+        context.fireChannelRead(wrapInboundOut(packet))
+        return .continue
+    }
+
+    mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+        return .needMoreData
+    }
+}

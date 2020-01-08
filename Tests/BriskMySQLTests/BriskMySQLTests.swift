@@ -1,7 +1,7 @@
 // *********************************************************************************************************************
 // MIT License
 //
-// BriskMySQLTests.swift - Copyright (c) 2019 Chris Reynolds
+// Copyright (c) 2019, 2020 Chris Reynolds
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,17 +28,38 @@
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
 import XCTest
+import NIO
 @testable import BriskMySQL
 
 final class BriskMySQLTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(BriskMySQL().text, "Hello, World!")
+    let testMatrix = [
+        "proxysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:6033/testdb")!
+        // "mariadb:latest": URL(string: "mysql://test_user:password@127.0.0.1:3301/testdb")!
+    ]
+    var eventLoopGroup: MultiThreadedEventLoopGroup!
+
+    override func setUp() {
+        eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    }
+
+    override func tearDown() {
+        try! eventLoopGroup.syncShutdownGracefully()
+    }
+
+    func testConnection() {
+        for server in testMatrix {
+            do {
+                _ = try MySQLConnection.connect(url: server.value, on: eventLoopGroup.next()).flatMap { conn in
+                    conn.close()
+                }.wait()
+            }
+            catch {
+                XCTFail(error.localizedDescription)
+            }
+        }
     }
 
     static var allTests = [
-        ("testExample", testExample)
+        ("testConnection", testConnection)
     ]
 }
