@@ -39,7 +39,7 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-nio.git", .exact("2.12.0")),
+        .package(url: "https://github.com/apple/swift-nio.git", .exact("2.12.0"))
         //.package(url: "https://github.com/apple/swift-nio-ssl.git", .exact("2.5.0")),
         //.package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .exact("1.3.0")),
         //.package(url: "https://github.com/SusanDoggie/SwiftCompression.git", .exact("1.0.2"))

@@ -32,9 +32,11 @@ import NIO
 @testable import BriskMySQL
 
 final class MySQLPacketTests: XCTestCase {
+    // swiftlint:disable identifier_name
     static let COM_PING: [UInt8] = [0x01, 0x00, 0x00, 0x42, 0x0E]
+    // swiftlint:enable identifier_name
 
-    func testByteBufferConversions() {
+    func testByteBufferConversions() throws {
         let testVector = MySQLPacketTests.COM_PING
 
         // Create the buffer from the test vector.
@@ -57,7 +59,7 @@ final class MySQLPacketTests: XCTestCase {
         XCTAssert(result == testVector, "MySQLPacket.toByteBuffer FAILED!")
     }
 
-    func testInvalidByteBufferConversions() {
+    func testInvalidByteBufferConversions() throws {
         let testMatrix = [MySQLPacketTests.COM_PING.prefix(3), MySQLPacketTests.COM_PING.prefix(4)]
 
         for testVector in testMatrix {
@@ -70,7 +72,7 @@ final class MySQLPacketTests: XCTestCase {
         }
     }
 
-    func testPacketLength() {
+    func testPacketLength() throws {
         let testVector = Int.random(in: (0x0...0xFFFFFF))
 
         var packet = MySQLStandardPacket()
@@ -79,7 +81,7 @@ final class MySQLPacketTests: XCTestCase {
         XCTAssert(packet.packetLength == testVector, "MySQLPacket.packetLength FAILED!")
     }
 
-    func testSequenceNumber() {
+    func testSequenceNumber() throws {
         let testVector = Int.random(in: (0x0...0xFF))
 
         var packet = MySQLStandardPacket()

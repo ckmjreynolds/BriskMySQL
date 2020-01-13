@@ -97,4 +97,3 @@ extension MySQLPacket {
 extension MySQLPacket {
     var debugDescription: String { toByteBuffer().debugDescription }
 }
-

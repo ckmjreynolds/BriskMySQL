@@ -32,7 +32,7 @@ import NIO
 @testable import BriskMySQL
 
 final class MySQLStandardPacketTests: XCTestCase {
-    func testFixedLengthBytes() {
+    func testFixedLengthBytes() throws {
         let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
         var packet = MySQLStandardPacket()
 
@@ -43,7 +43,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         XCTAssert(result == testVector, "MySQLStandardPacket.writeBytes/readBytes FAILED!")
     }
 
-    func testFixedWidthInteger() {
+    func testFixedWidthInteger() throws {
         let testVector = Int.random(in: Int.min...Int.max)
         var packet = MySQLStandardPacket()
 
@@ -58,7 +58,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         XCTAssert(result == testVector, "MySQLStandardPacket.writeInteger/readInteger FAILED!")
     }
 
-    func testLengthEncodedInteger() {
+    func testLengthEncodedInteger() throws {
         let testMatrix = [nil, UInt.random(in: 0x00...0xFA), UInt.random(in: 0xFB...0xFFFF),
                           UInt.random(in: 0x10000...0xFFFFFF), UInt.random(in: 0x1000000...UInt.max)]
 
@@ -73,7 +73,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         }
     }
 
-    func testLengthEncodedBytes() {
+    func testLengthEncodedBytes() throws {
         let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
         var packet = MySQLStandardPacket()
 
@@ -84,7 +84,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         XCTAssert(result == testVector, "MySQLStandardPacket.writeLenEncBytes/readLenEncBytes FAILED!")
     }
 
-    func testEndOfFileLengthBytes() {
+    func testEndOfFileLengthBytes() throws {
         let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
         var packet = MySQLStandardPacket()
 
@@ -95,7 +95,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         XCTAssert(result == testVector, "MySQLStandardPacket.readBytes FAILED!")
     }
 
-    func testFixedLengthString() {
+    func testFixedLengthString() throws {
         let testVector = "Now is the time for all good men to come to the aid of their country."
         var packet = MySQLStandardPacket()
 
@@ -110,7 +110,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         XCTAssert(result == testVector, "MySQLStandardPacket.writeBytes/readBytes FAILED!")
     }
 
-    func testCString() {
+    func testCString() throws {
         let testVector = "Now is the time for all good men to come to the aid of their country."
         var packet = MySQLStandardPacket()
 
@@ -120,7 +120,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         XCTAssert(packet.readCString() == testVector, "MySQLStandardPacket.writeCString/readCString FAILED!")
     }
 
-    func testLengthEncodedStrings() {
+    func testLengthEncodedStrings() throws {
         let testVector = "Now is the time for all good men to come to the aid of their country."
         var packet = MySQLStandardPacket()
 
@@ -130,7 +130,7 @@ final class MySQLStandardPacketTests: XCTestCase {
         XCTAssert(packet.readLenEncString() == testVector, "MySQLStandardPacket.write/readLenEncString FAILED!")
     }
 
-    func testInvalidInputs() {
+    func testInvalidInputs() throws {
         var packet = MySQLStandardPacket()
         var result: UInt?
 

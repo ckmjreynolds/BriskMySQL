@@ -39,7 +39,8 @@ internal struct MySQLPacketDecoder: ByteToMessageDecoder {
         return .continue
     }
 
-    mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer,
+ seenEOF: Bool) throws -> DecodingState {
         return .needMoreData
     }
 }
