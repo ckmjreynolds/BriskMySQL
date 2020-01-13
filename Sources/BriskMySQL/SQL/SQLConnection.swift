@@ -27,10 +27,13 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
 import Foundation
 import NIO
 
 public protocol SQLConnection {
     static func connect(url: URL, on: EventLoop) -> EventLoopFuture<SQLConnection>
+    func isConnected() -> EventLoopFuture<Bool>
     func close() -> EventLoopFuture<Void>
 }
+*/

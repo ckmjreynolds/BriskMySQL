@@ -27,36 +27,9 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
 import NIO
 import CryptoSwift
-
-internal class MySQLProtocolHandler: ChannelDuplexHandler {
-    typealias InboundIn = MySQLPacket
-    typealias OutboundIn = MySQLState
-    typealias OutboundOut = MySQLPacket
-
-    private var state: MySQLState
-
-    init(state: MySQLState) { self.state = state }
-
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        var packet = unwrapInboundIn(data)
-
-        switch state {
-        case .initialHandshake(let connection, let params):
-            do {
-                try handleIntiialHandshakePacket(params: params, packet: &packet, context: context)
-                state = .handshakeResponse(connection: connection, params: params)
-            }
-            catch {
-                connection.fail(error)
-            }
-        case .handshakeResponse(let connection, let params):
-            print(packet.debugDescription)
-            connection.succeed(MySQLConnection(params: params, channel: context.channel))
-        }
-    }
-}
 
 extension MySQLProtocolHandler {
     /**
@@ -68,51 +41,51 @@ string<1> reserved byte
 if (server_capabilities & PLUGIN_AUTH)
 string<NUL> authentication plugin name
      */
-    private func handleIntiialHandshakePacket(params: [String: String], packet: inout MySQLPacket,
-                                              context: ChannelHandlerContext) throws {
+    func handleIntiialHandshakePacket(params: [String: String], packet: inout MySQLPacket,
+                                      context: ChannelHandlerContext) throws {
         // int<1> protocol version
-        guard let protocolVersion = packet.readUInt8() else { throw SQLError.protocolError }
+        guard let protocolVersion = packet.readUInt8() else { throw SQLError.protocolError() }
 
         // string<NUL> server version (MariaDB server version is by default prefixed by "5.5.5-")
         let serverVersion = packet.readCString()
 
         // int<4> connection id
-        guard let connectionId = packet.readUInt32() else { throw SQLError.protocolError }
+        guard let connectionId = packet.readUInt32() else { throw SQLError.protocolError() }
 
         // string<8> scramble 1st part (authentication seed)
-        guard let scramble1 = packet.readBytes(length: 8) else { throw SQLError.protocolError }
+        guard let scramble1 = packet.readBytes(length: 8) else { throw SQLError.protocolError() }
 
         // string<1> reserved byte
-        guard let reserved1 = packet.readUInt8() else { throw SQLError.protocolError }
+        guard let reserved1 = packet.readUInt8() else { throw SQLError.protocolError() }
 
         // int<2> server capabilities (1st part)
-        guard let serverCapabilities1 = packet.readUInt16() else { throw SQLError.protocolError }
+        guard let serverCapabilities1 = packet.readUInt16() else { throw SQLError.protocolError() }
 
         // int<1> server default collation
-        guard let serverDefaultCollation = packet.readUInt8() else { throw SQLError.protocolError }
+        guard let serverDefaultCollation = packet.readUInt8() else { throw SQLError.protocolError() }
 
         // int<2> status flags
-        guard let statusFlags = packet.readUInt16() else { throw SQLError.protocolError }
+        guard let statusFlags = packet.readUInt16() else { throw SQLError.protocolError() }
 
         // int<2> server capabilities (2nd part)
-        guard let serverCapabilities2 = packet.readUInt16() else { throw SQLError.protocolError }
+        guard let serverCapabilities2 = packet.readUInt16() else { throw SQLError.protocolError() }
 
         // int<1> plugin data length
-        guard let pluginDataLength = packet.readUInt8() else { throw SQLError.protocolError }
+        guard let pluginDataLength = packet.readUInt8() else { throw SQLError.protocolError() }
 
         // string<6> filler
-        guard let filler = packet.readBytes(length: 6) else { throw SQLError.protocolError }
+        guard let filler = packet.readBytes(length: 6) else { throw SQLError.protocolError() }
 
         // int<4> server capabilities 3rd part . MariaDB specific flags /* MariaDB 10.2 or later */
-        guard let serverCapabilities3 = packet.readUInt32() else { throw SQLError.protocolError }
+        guard let serverCapabilities3 = packet.readUInt32() else { throw SQLError.protocolError() }
 
         // string<n> scramble 2nd part . Length = max(12, plugin data length - 9)
         guard let scramble2 = packet.readBytes(length: Int(max(12, pluginDataLength - 9))) else {
-            throw SQLError.protocolError
+            throw SQLError.protocolError()
         }
 
         // string<1> reserved byte
-        guard let reserved2 = packet.readUInt8() else { throw SQLError.protocolError }
+        guard let reserved2 = packet.readUInt8() else { throw SQLError.protocolError() }
 
         // string<NUL> authentication plugin name
         let pluginName = packet.readCString()
@@ -123,14 +96,10 @@ string<NUL> authentication plugin name
 
         // Validate that we processed the entire packet and check flags that we depend on.
         // NOTE: We support COMPRESSion and SSL as well but do not require either.
-        guard packet.body.readableBytes == 0 else { throw SQLError.protocolError }
-        guard flags.contains(.CONNECT_WITH_DB) else { throw SQLError.protocolError }
-        guard flags.contains(.CLIENT_PROTOCOL_41) else { throw SQLError.protocolError }
-        guard flags.contains(.SECURE_CONNECTION) else { throw SQLError.protocolError }
-        guard flags.contains(.PLUGIN_AUTH) else { throw SQLError.protocolError }
-        // guard flags.contains(.CLIENT_DEPRECATE_EOF) else { throw SQLError.protocolError }
-        // https://github.com/sysown/proxysql/issues/2119
-        guard pluginName == "mysql_native_password" else { throw SQLError.protocolError }
+        guard packet.body.readableBytes == 0 else { throw SQLError.protocolError() }
+        guard flags.contains(.CONNECT_WITH_DB) else { throw SQLError.protocolError() }
+        guard flags.contains(.CLIENT_PROTOCOL_41) else { throw SQLError.protocolError() }
+        guard flags.contains(.SECURE_CONNECTION) else { throw SQLError.protocolError() }
 
         #if DEBUG
         print("************************************************************************")
@@ -179,12 +148,15 @@ string<NUL> authentication plugin name
 
         // Create the Handshake Response Packet.
         // https://mariadb.com/kb/en/connection/#handshake-response-packet
-        let clientFlags = MySQLCapabilities(arrayLiteral: [.CONNECT_WITH_DB, .CLIENT_PROTOCOL_41, .SECURE_CONNECTION,
+        var response = MySQLPacket(sequenceNumber: packet.sequenceNumber &+ 1)
+
+        var clientFlags = MySQLCapabilities(arrayLiteral: [.CONNECT_WITH_DB, .CLIENT_PROTOCOL_41, .SECURE_CONNECTION,
                                                            .PLUGIN_AUTH])
 
-        print("\(clientFlags)")
-
-        var response = MySQLPacket(sequenceNumber: packet.sequenceNumber &+ 1)
+        // Enable compression if supported and not turned off.
+//        if params["compress"] ?? "true" == "true" && flags.contains(.COMPRESS) {
+//            clientFlags = clientFlags.union(.COMPRESS)
+//        }
 
         // int<4> client capabilities
         response.writeUInt32(UInt32(clientFlags.rawValue & 0x00000000FFFFFFFF))
@@ -210,11 +182,25 @@ string<NUL> authentication plugin name
         //      int<1> length of authentication response
         //      string<fix> authentication response (length is indicated by previous field)
         //
-        // The password is encrypted with: SHA1( password ) ^ SHA1( seed + SHA1( SHA1( password ) ) )
+        let passwordHash: [UInt8], saltedHash: [UInt8], authResponse: [UInt8]
         let seed = scramble1 + scramble2
-        let passwordHash = params["password"]!.bytes.sha1()
-        let saltedHash = (seed + passwordHash.sha1()).sha1()
-        let authResponse = passwordHash.enumerated().map { $0.element ^ saltedHash[$0.offset] }
+
+        switch pluginName {
+        case "mysql_native_password":
+            // The password is encrypted with: SHA1( password ) ^ SHA1( seed + SHA1( SHA1( password ) ) )
+            passwordHash = params["password"]!.bytes.sha1()
+            saltedHash = (seed + passwordHash.sha1()).sha1()
+/*
+        case "caching_sha2_password":
+            // Encryption is XOR(SHA256(password), SHA256(seed, SHA256(SHA256(password))))
+            passwordHash = params["password"]!.bytes.sha256()
+            saltedHash = (seed + passwordHash.sha256()).sha256()
+*/
+        default:
+            throw SQLError.protocolError("Protocol error: Unsupported authentication plugin.")
+        }
+
+        authResponse = passwordHash.enumerated().map { $0.element ^ saltedHash[$0.offset] }
         response.writeUInt8(UInt8(authResponse.count))
         response.writeBytes(authResponse)
 
@@ -230,3 +216,4 @@ string<NUL> authentication plugin name
         _ = context.writeAndFlush(wrapOutboundOut(response))
     }
 }
+*/

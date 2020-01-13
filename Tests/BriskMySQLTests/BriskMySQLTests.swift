@@ -27,14 +27,16 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
 import XCTest
 import NIO
 @testable import BriskMySQL
 
 final class BriskMySQLTests: XCTestCase {
     let testMatrix = [
-        "proxysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:6033/testdb")!
-        // "mariadb:latest": URL(string: "mysql://test_user:password@127.0.0.1:3301/testdb")!
+        //"proxysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:6033/testdb")!,
+        //"mariadb:latest": URL(string: "mysql://test_user:password@127.0.0.1:3301/testdb")!,
+        "mysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:3306/testdb")!
     ]
     var eventLoopGroup: MultiThreadedEventLoopGroup!
 
@@ -47,19 +49,20 @@ final class BriskMySQLTests: XCTestCase {
     }
 
     func testConnection() {
-        for server in testMatrix {
-            do {
-                _ = try MySQLConnection.connect(url: server.value, on: eventLoopGroup.next()).flatMap { conn in
-                    conn.close()
-                }.wait()
-            }
-            catch {
-                XCTFail(error.localizedDescription)
-            }
-        }
+//        for server in testMatrix {
+//            do {
+//                _ = try MySQLConnection.connect(url: server.value, on: eventLoopGroup.next()).flatMap { conn in
+//                    conn.close()
+//                }.wait()
+//            }
+//            catch {
+//                XCTFail(server.key + " - ERROR: " + error.localizedDescription)
+//            }
+//        }
     }
 
     static var allTests = [
         ("testConnection", testConnection)
     ]
 }
+*/

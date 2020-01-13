@@ -27,7 +27,7 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-
+/*
 /// - Note: MariaDB documentation for SECURE_CONNECTION is incorrect.
 /// - See Also: [capabilities](https://mariadb.com/kb/en/connection/#capabilities)
 internal struct MySQLCapabilities: OptionSet {
@@ -58,3 +58,4 @@ internal struct MySQLCapabilities: OptionSet {
     static let MARIADB_CLIENT_COM_MULTI             = MySQLCapabilities(rawValue: 1 << 33)
     static let MARIADB_CLIENT_STMT_BULK_OPERATIONS  = MySQLCapabilities(rawValue: 1 << 34)
 }
+*/

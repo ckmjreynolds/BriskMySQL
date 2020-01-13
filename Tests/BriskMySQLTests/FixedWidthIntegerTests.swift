@@ -27,17 +27,30 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+import XCTest
 import NIO
+@testable import BriskMySQL
 
-internal class MySQLCompressedPacketHandler: ChannelDuplexHandler {
-    typealias InboundIn = MySQLPacket
-    typealias OutboundIn = MySQLPacket
+final class FixedWidthIntegerTests: XCTestCase {
+    func testToLittleEndianBytes() {
+        let testVector: UInt64 = 0x0807060504030201
+        let expectedResult: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]
+        let result = testVector.toLittleEndianBytes(bitWidth: 64)
 
-    private unowned let connection: MySQLConnection
-
-    init(connection: MySQLConnection) { self.connection = connection }
-
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        context.fireChannelRead(data)
+        XCTAssert(result == expectedResult, "FixedWidthInteger.toLittleEndianBytes FAILED!")
     }
+
+    func testFromLittleEndianBytes() {
+        let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
+        let expectedResult: UInt64 = 0x0807060504030201
+        let result = UInt64.fromLittleEndianBytes(testVector, bitWidth: 64)
+
+        XCTAssert(result == expectedResult, "FixedWidthInteger.fromLittleEndianBytes FAILED!")
+    }
+
+    static var allTests = [
+        ("testToLittleEndianBytes", testToLittleEndianBytes),
+        ("testFromLittleEndianBytes", testFromLittleEndianBytes)
+    ]
 }
+

@@ -27,6 +27,7 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
 import Foundation
 import NIO
 
@@ -46,32 +47,7 @@ public class MySQLConnection: SQLConnection {
             return bootstrap.connect(host: params["host"]!, port: Int(params["port"]!)!).flatMap { channel in
                 let connection = eventLoop.makePromise(of: SQLConnection.self)
                 let state = MySQLState.initialHandshake(connection: connection, params: params)
-                /*
-                                                                      I/O Request
-                                                                      via `Channel` or
-                                                                      `ChannelHandlerContext`
-                                                                        |
-                    +---------------------------------------------------+---------------+
-                    |                           ChannelPipeline         |               |
-                    |                                TAIL              \|/              |
-                    |    +----------------------+           +-----------+----------+    |
-                    |    | MySQLProtocolHandler |           | MySQLProtocolHandler |    |
-                    |    +----------+-----------+           +-----------+----------+    |
-                    |              /|\                                  |               |
-                    |               |                                  \|/              |
-                    |    +----------+-----------+           +-----------+----------+    |
-                    |    | MySQLPacketDecoder   |           | MySQLPacketEncoder   |    |
-                    |    +----------+-----------+           +-----------+----------+    |
-                    |              /|\               HEAD               |               |
-                    +---------------+-----------------------------------+---------------+
-                                    |                                  \|/
-                    +---------------+-----------------------------------+---------------+
-                    |               |                                   |               |
-                    |       [ Socket.read ]                     [ Socket.write ]        |
-                    |                                                                   |
-                    |  SwiftNIO Internal I/O Threads (Transport Implementation)         |
-                    +-------------------------------------------------------------------+
-                */
+
                 return channel.pipeline.addHandler(ByteToMessageHandler(MySQLPacketDecoder()),
                                                    name: "MySQLPacketDecoder", position: .last).flatMap {
                     return channel.pipeline.addHandler(MessageToByteHandler(MySQLPacketEncoder()),
@@ -86,27 +62,34 @@ public class MySQLConnection: SQLConnection {
         }
     }
 
+    public func isConnected() -> EventLoopFuture<Bool> {
+        let result = channel.eventLoop.makePromise(of: Bool.self)
+        let state = MySQLState.ping(connection: self, result: result)
+        _ = channel.writeAndFlush(state)
+        return result.futureResult
+    }
+
     public func close() -> EventLoopFuture<Void> {
         channel.close(mode: .all)
     }
 
-    internal init(params: [String: String], channel: Channel) {
+    private init(params: [String: String], channel: Channel) {
         self.params = params
         self.channel = channel
     }
 }
 
 extension MySQLConnection {
-    static private let configKeys = ["user", "password", "host", "port", "database"]
+    static private let configKeys = ["user", "password", "host", "port", "database", "compression"]
 
     /// Decode the DB url into its component parts.
     internal static func decodeURL(url: URL) -> Result<[String: String], SQLError> {
         // Verify and decode the required parts.
-        guard (url.scheme ?? "") == "mysql" else { return .failure(.invalidURL) }
-        guard let user = url.user else { return .failure(.invalidURL) }
-        guard let password = url.password else { return .failure(.invalidURL) }
-        guard let host = url.host, host.count > 0 else { return .failure(.invalidURL) }
-        guard let port = url.port else { return .failure(.invalidURL) }
+        guard (url.scheme ?? "") == "mysql" else { return .failure(.invalidURL()) }
+        guard let user = url.user else { return .failure(.invalidURL()) }
+        guard let password = url.password else { return .failure(.invalidURL()) }
+        guard let host = url.host, host.count > 0 else { return .failure(.invalidURL()) }
+        guard let port = url.port else { return .failure(.invalidURL()) }
 
         // Create a dictionary with all of the required components.
         var dict = ["user": user, "password": password, "host": host, "port": String(port),
@@ -115,15 +98,16 @@ extension MySQLConnection {
         // Parse any options that were added to the URL.
         for query in (url.query ?? "").split(separator: "&") {
             let param = query.split(separator: "=")
-            guard param.count == 2 else { return .failure(.invalidURL)}
+            guard param.count == 2 else { return .failure(.invalidURL())}
 
             dict[String(param[0])] = String(param[1])
         }
 
         // Check to make sure known keys are present.
         if dict.filter({ !configKeys.contains($0.key) }).count != 0 {
-            return .failure(.invalidURL)
+            return .failure(.invalidURL())
         }
         return .success(dict)
     }
 }
+*/

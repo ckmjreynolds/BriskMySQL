@@ -32,7 +32,9 @@ import XCTest
 #if !canImport(ObjectiveC)
 public func allTests() -> [XCTestCaseEntry] {
     return [
-        testCase(BriskMySQLTests.allTests)
+        FixedWidthIntegerTests.allTests,
+        MySQLPacketTests.allTests,
+        MySQLStandardPacketTests.allTests
     ]
 }
 #endif

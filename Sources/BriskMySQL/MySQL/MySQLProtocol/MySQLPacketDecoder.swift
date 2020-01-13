@@ -27,3 +27,20 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
+import NIO
+
+internal struct MySQLPacketDecoder: ByteToMessageDecoder {
+    typealias InboundOut = MySQLPacket
+
+    mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+        guard let packet = MySQLPacket(packet: buffer) else { return .needMoreData }
+        context.fireChannelRead(wrapInboundOut(packet))
+        return .continue
+    }
+
+    mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+        return .needMoreData
+    }
+}
+*/

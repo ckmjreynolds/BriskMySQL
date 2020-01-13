@@ -27,12 +27,12 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
 import NIO
 
-public enum SQLError: String, Error, CustomStringConvertible {
-    public var description: String { self.rawValue }
-
-    case notImplemented = "Feature not implemented."
-    case invalidURL = "Invalid URL."
-    case protocolError = "Error decoding protocol."
+public enum SQLError: Error {
+    case notImplemented(String = "Feature is not implemented.")
+    case invalidURL(String = "Connection URL is invalid.")
+    case protocolError(String = "Protocol error.")
 }
+*/

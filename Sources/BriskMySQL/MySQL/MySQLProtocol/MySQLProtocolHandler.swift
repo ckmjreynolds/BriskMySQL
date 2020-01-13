@@ -27,18 +27,47 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
 import NIO
+/*
+    // 224 - utf8mb4_unicode_ci
+    static let utf8mb4_unicode_ci: Int = 224
+*/
 
-internal struct MySQLPacketDecoder: ByteToMessageDecoder {
-    typealias InboundOut = MySQLPacket
+internal class MySQLProtocolHandler: ChannelDuplexHandler {
+    typealias InboundIn = MySQLPacket
+    typealias OutboundIn = MySQLState
+    typealias OutboundOut = MySQLPacket
 
-    mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        guard let packet = MySQLPacket(buffer: &buffer) else { return .needMoreData }
-        context.fireChannelRead(wrapInboundOut(packet))
-        return .continue
-    }
+    private var state: MySQLState
 
-    mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
-        return .needMoreData
+    init(state: MySQLState) { self.state = state }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var packet = unwrapInboundIn(data)
+
+        switch state {
+        case .initialHandshake(let connection, let params):
+            do {
+                try handleIntiialHandshakePacket(params: params, packet: &packet, context: context)
+                state = .handshakeResponse(connection: connection, params: params)
+            }
+            catch {
+                connection.fail(error)
+            }
+
+        case .handshakeResponse(let connection, let params):
+            print(packet.debugDescription)
+            assert(packet.isOK)
+            var response = MySQLPacket(sequenceNumber: 0)
+            response.writeInteger(0x08, size: 1)
+
+            _ = context.writeAndFlush(wrapOutboundOut(response))
+            //connection.succeed(MySQLConnection(params: params, channel: context.channel))
+
+        case .ping(_, _):
+            break;
+        }
     }
 }
+*/

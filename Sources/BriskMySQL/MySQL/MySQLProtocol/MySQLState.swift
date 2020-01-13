@@ -27,3 +27,12 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+/*
+import NIO
+
+internal enum MySQLState {
+    case initialHandshake(connection: EventLoopPromise<SQLConnection>, params: [String: String])
+    case handshakeResponse(connection: EventLoopPromise<SQLConnection>, params: [String: String])
+    case ping(connection: MySQLConnection, result: EventLoopPromise<Bool>)
+}
+*/
