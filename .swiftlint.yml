@@ -30,7 +30,7 @@
 excluded:
   - .build/
   - Tests/LinuxMain.swift
-  - Tests/AppTests/XCTestManifests.swift
+  - Tests/BriskMySQLTests/XCTestManifests.swift
 
 file_header:
     required_pattern: |

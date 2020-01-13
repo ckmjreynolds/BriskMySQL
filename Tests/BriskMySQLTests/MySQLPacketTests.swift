@@ -36,7 +36,7 @@ final class MySQLPacketTests: XCTestCase {
     static let COM_PING: [UInt8] = [0x01, 0x00, 0x00, 0x42, 0x0E]
     // swiftlint:enable identifier_name
 
-    func testByteBufferConversions() throws {
+    func testByteBufferConversions() {
         let testVector = MySQLPacketTests.COM_PING
 
         // Create the buffer from the test vector.
@@ -59,7 +59,7 @@ final class MySQLPacketTests: XCTestCase {
         XCTAssert(result == testVector, "MySQLPacket.toByteBuffer FAILED!")
     }
 
-    func testInvalidByteBufferConversions() throws {
+    func testInvalidByteBufferConversions() {
         let testMatrix = [MySQLPacketTests.COM_PING.prefix(3), MySQLPacketTests.COM_PING.prefix(4)]
 
         for testVector in testMatrix {
@@ -72,7 +72,7 @@ final class MySQLPacketTests: XCTestCase {
         }
     }
 
-    func testPacketLength() throws {
+    func testPacketLength() {
         let testVector = Int.random(in: (0x0...0xFFFFFF))
 
         var packet = MySQLStandardPacket()
@@ -81,7 +81,7 @@ final class MySQLPacketTests: XCTestCase {
         XCTAssert(packet.packetLength == testVector, "MySQLPacket.packetLength FAILED!")
     }
 
-    func testSequenceNumber() throws {
+    func testSequenceNumber() {
         let testVector = Int.random(in: (0x0...0xFF))
 
         var packet = MySQLStandardPacket()
@@ -89,11 +89,4 @@ final class MySQLPacketTests: XCTestCase {
 
         XCTAssert(packet.sequenceNumber == testVector, "MySQLPacket.sequenceNumber FAILED!")
     }
-
-    static var allTests = [
-        ("testByteBufferConversions", testByteBufferConversions),
-        ("testInvalidByteBufferConversions", testInvalidByteBufferConversions),
-        ("testPacketLength", testPacketLength),
-        ("testSequenceNumber", testSequenceNumber)
-    ]
 }

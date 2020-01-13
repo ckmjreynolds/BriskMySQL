@@ -32,7 +32,7 @@ import NIO
 @testable import BriskMySQL
 
 final class FixedWidthIntegerTests: XCTestCase {
-    func testToLittleEndianBytes() throws {
+    func testToLittleEndianBytes() {
         let testVector: UInt64 = 0x0807060504030201
         let expectedResult: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]
         let result = testVector.toLittleEndianBytes(bitWidth: 64)
@@ -40,16 +40,11 @@ final class FixedWidthIntegerTests: XCTestCase {
         XCTAssert(result == expectedResult, "FixedWidthInteger.toLittleEndianBytes FAILED!")
     }
 
-    func testFromLittleEndianBytes() throws {
+    func testFromLittleEndianBytes() {
         let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
         let expectedResult: UInt64 = 0x0807060504030201
         let result = UInt64.fromLittleEndianBytes(testVector, bitWidth: 64)
 
         XCTAssert(result == expectedResult, "FixedWidthInteger.fromLittleEndianBytes FAILED!")
     }
-
-    static var allTests = [
-        ("testToLittleEndianBytes", testToLittleEndianBytes),
-        ("testFromLittleEndianBytes", testFromLittleEndianBytes)
-    ]
 }
