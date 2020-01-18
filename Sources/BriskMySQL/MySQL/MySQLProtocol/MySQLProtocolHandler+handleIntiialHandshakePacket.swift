@@ -32,6 +32,7 @@ import NIOSSL
 import CryptoSwift
 
 extension MySQLProtocolHandler {
+    // swiftlint:disable cyclomatic_complexity function_body_length
     /**
      Initial Handshake Packet
      https://mariadb.com/kb/en/connection/#initial-handshake-packet
@@ -175,10 +176,10 @@ extension MySQLProtocolHandler {
                 tlsConfiguration.certificateVerification = .none
 
                 // Add the handler to the pipeline.
-                let sslContext = try! NIOSSLContext(configuration: tlsConfiguration)
-                let handler = try! NIOSSLClientHandler(context: sslContext, serverHostname: nil)
+                let sslContext = try? NIOSSLContext(configuration: tlsConfiguration)
+                let handler = try? NIOSSLClientHandler(context: sslContext!, serverHostname: nil)
 
-                return context.channel.pipeline.addHandler(handler, position: .first)
+                return context.channel.pipeline.addHandler(handler!, position: .first)
             }
         } else {
             done = context.eventLoop.makeSucceededFuture(())
@@ -235,4 +236,5 @@ extension MySQLProtocolHandler {
             return context.writeAndFlush(self.wrapOutboundOut(response))
         }
     }
+    // swiftlint:enable cyclomatic_complexity function_body_length
 }

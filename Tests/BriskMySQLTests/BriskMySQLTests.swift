@@ -51,7 +51,7 @@ final class BriskMySQLTests: XCTestCase {
     }
 
     override func tearDown() {
-        try! eventLoopGroup.syncShutdownGracefully()
+        try? eventLoopGroup.syncShutdownGracefully()
     }
 
     func testConnection() {
@@ -64,11 +64,10 @@ final class BriskMySQLTests: XCTestCase {
                     if !server.key.contains("error:") {
                         XCTAssert(result)
                     } else {
-                        XCTFail()
+                        XCTFail("This should have failed.")
                     }
                 }.wait()
-            }
-            catch {
+            } catch {
                 if !server.key.contains("error:") {
                     XCTFail(server.key + " - ERROR: " + error.localizedDescription)
                 } else {
@@ -76,7 +75,7 @@ final class BriskMySQLTests: XCTestCase {
                     case "password":
                         XCTAssert(error.localizedDescription.contains("ERROR 1045"))
                     default:
-                        XCTFail()
+                        XCTFail("Unexpected error message.")
                     }
                 }
             }

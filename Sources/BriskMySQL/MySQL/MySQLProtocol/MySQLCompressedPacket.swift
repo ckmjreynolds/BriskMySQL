@@ -64,10 +64,10 @@ extension MySQLCompressedPacket {
         if body.readableBytes > MySQLCompressedPacket.compressionThreshold {
             self.uncompressedPacketLength = body.readableBytes
 
-            let deflate = try! Deflate(windowBits: 15)
-            let compressed = try! deflate.process(Data(body.getBytes(at: 0, length: body.readableBytes)!))
+            let deflate = try? Deflate(windowBits: 15)
+            let compressed = try? deflate?.process(Data(body.getBytes(at: 0, length: body.readableBytes)!))
 
-            self.body.clear(); self.body.writeBytes(compressed.bytes)
+            self.body.clear(); self.body.writeBytes(compressed!.bytes)
             self.packetLength = body.readableBytes
         } else {
             // This is an uncompressed, compressed packet.
@@ -80,10 +80,10 @@ extension MySQLCompressedPacket {
         // NO-OP if the data is not actually compressed.
         guard self.uncompressedPacketLength > 0 else { return self.body }
 
-        let inflate = try! Inflate()
-        let decompressed = try! inflate.process(Data( body.getBytes(at: 0, length: body.readableBytes)!))
+        let inflate = try? Inflate()
+        let decompressed = try? inflate?.process(Data( body.getBytes(at: 0, length: body.readableBytes)!))
 
-        self.body.clear(); self.body.writeBytes(decompressed.bytes)
+        self.body.clear(); self.body.writeBytes(decompressed!.bytes)
         return self.body
     }
 

@@ -47,8 +47,9 @@ internal class MySQLCompressedPacketDecoder: ByteToMessageDecoder {
     }
 
     func decodeLast(context: ChannelHandlerContext,
-                             buffer: inout ByteBuffer,
-                             seenEOF: Bool) throws -> DecodingState {
+                    buffer: inout ByteBuffer,
+                    seenEOF: Bool) throws -> DecodingState {
+
         return .needMoreData
     }
 }

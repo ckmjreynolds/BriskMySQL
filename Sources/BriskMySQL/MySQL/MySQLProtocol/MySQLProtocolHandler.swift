@@ -34,8 +34,10 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
     typealias OutboundIn = MySQLState
     typealias OutboundOut = MySQLStandardPacket
 
+    // swiftlint:disable identifier_name
     // 224 - utf8mb4_unicode_ci
     static let utf8mb4_unicode_ci = 224
+    // swiftlint:enable identifier_name
 
     private var state: MySQLState
     private unowned var compressedDecoder: MySQLCompressedPacketDecoder
@@ -51,7 +53,7 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
         state = unwrapOutboundIn(data)
 
         switch state {
-        case .ping(_):
+        case .ping:
             var packet = MySQLStandardPacket()
             packet.writeInteger(MySQLStandardPacket.COM_PING)
             context.writeAndFlush(wrapOutboundOut(packet), promise: promise)
@@ -61,6 +63,7 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
         }
     }
 
+    // swiftlint:disable cyclomatic_complexity
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var packet = unwrapInboundIn(data)
 
@@ -95,6 +98,8 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
                 var response = MySQLStandardPacket(sequenceNumber: packet.sequenceNumber + 1)
                 response.writeString(params["password"]!)
                 _ = context.writeAndFlush(wrapOutboundOut(response))
+            } else {
+                connection.fail(SQLError.protocolError)
             }
 
         case .ping(let result):
@@ -105,4 +110,5 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
             }
         }
     }
+    // swiftlint:enable cyclomatic_complexity
 }

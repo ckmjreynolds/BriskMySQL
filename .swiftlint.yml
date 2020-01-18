@@ -66,6 +66,7 @@ file_header:
 identifier_name:
   excluded:
       - on
+      - to
 
 opt_in_rules:
   - file_header
