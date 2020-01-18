@@ -204,12 +204,17 @@ extension MySQLProtocolHandler {
                 // The password is encrypted with: SHA1( password ) ^ SHA1( seed + SHA1( SHA1( password ) ) )
                 passwordHash = password.bytes.sha1()
                 saltedHash = (seed + passwordHash.sha1()).sha1()
-    /*
+
             case "caching_sha2_password":
+                // caching_sha2_password requires a SSL/TLS connection.
+                if !clientFlags.contains(.SSL) {
+                    return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
+                }
+
                 // Encryption is XOR(SHA256(password), SHA256(seed, SHA256(SHA256(password))))
-                passwordHash = params["password"]!.bytes.sha256()
+                passwordHash = password.bytes.sha256()
                 saltedHash = (seed + passwordHash.sha256()).sha256()
-    */
+
             default:
                 return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
             }

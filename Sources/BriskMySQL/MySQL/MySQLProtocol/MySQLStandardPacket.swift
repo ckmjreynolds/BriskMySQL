@@ -54,9 +54,9 @@ internal struct MySQLStandardPacket: MySQLPacket {
     static let OK_Packet: UInt8 = 0x00
     static let EOF_Packet: UInt8 = 0xFE
     static let ERR_Packet: UInt8 = 0xFF
+    static let Fast_Auth_Packet: [UInt8] = [0x01, 0x04]
 
     static let COM_PING: UInt8 = 0x0E
-    static let COM_QUIT: UInt8 = 0x01
     // swiftlint:enable identifier_name
 
     var header: [UInt8] = [UInt8](repeating: 0, count: Self.headerLength)
@@ -155,6 +155,16 @@ extension MySQLStandardPacket {
         }
 
         return "ERROR " + String(errorCode) + errorMessage
+    }
+}
+
+// MARK: "fast" authentication result".
+// https://mariadb.com/kb/en/caching_sha2_password-authentication-plugin/#fast-authentication-result
+extension MySQLStandardPacket {
+    /// Returns true if this is "fast" authentication result meaning continue and send the password in plaintext.
+    mutating func isFastAuthenticationResult() -> Bool {
+        body.moveReaderIndex(to: 0); defer { body.moveReaderIndex(to: 0) }
+        return readBytes(encoding: .fixedLength(length: 2))! == Self.Fast_Auth_Packet
     }
 }
 

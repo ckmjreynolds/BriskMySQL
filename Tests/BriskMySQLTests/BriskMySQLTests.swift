@@ -27,20 +27,26 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
+import Foundation
 import XCTest
 import NIO
 @testable import BriskMySQL
 
 final class BriskMySQLTests: XCTestCase {
-    let testMatrix = [
-        "proxysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:6033/testdb")!,
-        "mariadb:latest": URL(string: "mysql://test_user:password@127.0.0.1:3301/testdb")!,
-        "mysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:3306/testdb")!,
-        "error:password": URL(string: "mysql://test_user:passwor@127.0.0.1:3306/testdb")!
-    ]
+    let dbhost = ProcessInfo.processInfo.environment["DB_HOST"] ?? "127.0.0.1"
+    let dbPassword = ProcessInfo.processInfo.environment["DB_PASSWORD"] ?? "password"
+
+    var testMatrix: [String: URL] = [:]
     var eventLoopGroup: MultiThreadedEventLoopGroup!
 
     override func setUp() {
+        testMatrix = [
+            "proxysql:latest": URL(string: "mysql://test_user:" + dbPassword + "@" + dbhost + ":6033/testdb")!,
+            "mariadb:latest": URL(string: "mysql://test_user:" + dbPassword + "@" + dbhost + ":3301/testdb")!,
+            "mysql:latest": URL(string: "mysql://test_user:" + dbPassword + "@" + dbhost + ":3306/testdb")!,
+            "error:password": URL(string: "mysql://test_user:passwor@" + dbhost + ":3306/tempdb")!
+        ]
+
         eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     }
 

@@ -91,6 +91,10 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
                 connection.succeed(MySQLConnection(params: params, channel: context.channel))
             } else if packet.isError() {
                 connection.fail(SQLError.sqlError(packet.errorInfo()))
+            } else if packet.isFastAuthenticationResult() {
+                var response = MySQLStandardPacket(sequenceNumber: packet.sequenceNumber + 1)
+                response.writeString(params["password"]!)
+                _ = context.writeAndFlush(wrapOutboundOut(response))
             }
 
         case .ping(let result):
