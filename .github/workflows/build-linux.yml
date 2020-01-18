@@ -39,6 +39,10 @@ jobs:
         image: swift:latest
     steps:
         - uses: actions/checkout@v1
+        - name: Install packages
+          run: |
+            sudo apt update -qy
+            sudo apt install zlib1g-dev
         - name: Build
           run: swift build
         - name: Test
