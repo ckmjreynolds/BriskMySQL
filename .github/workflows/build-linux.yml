@@ -38,11 +38,9 @@ jobs:
     container:
         image: swift:latest
     steps:
-        - uses: actions/checkout@v1
         - name: Install packages
-          run: |
-            sudo apt update -qy
-            sudo apt install zlib1g-dev
+          run: apt-get -q update && apt-get -y -q install libz-dev
+        - uses: actions/checkout@v1
         - name: Build
           run: swift build
         - name: Test
