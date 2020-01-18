@@ -27,13 +27,29 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
 import Foundation
 import NIO
+import NIOSSL
 
 public protocol SQLConnection {
-    static func connect(url: URL, on: EventLoop) -> EventLoopFuture<SQLConnection>
-    func isConnected() -> EventLoopFuture<Bool>
+    typealias Closure<T> = (SQLConnection) -> EventLoopFuture<T>
+
+    static func withConnection<T>(to: URL, on: EventLoop, closure: @escaping Closure<T>) -> EventLoopFuture<T>
+    static func connect(to: URL, on: EventLoop) -> EventLoopFuture<SQLConnection>
     func close() -> EventLoopFuture<Void>
+
+    func isConnected() -> EventLoopFuture<Bool>
 }
-*/
+
+extension SQLConnection {
+    public static func withConnection<T>(to: URL, on: EventLoop, closure: @escaping Closure<T>) -> EventLoopFuture<T> {
+        self.connect(to: to, on: on).flatMap { conn -> EventLoopFuture<T> in
+            closure(conn).map { result in
+                _ = conn.close()
+                return result
+            }.flatMapError { error in
+                conn.close().flatMapThrowing { throw error }
+            }
+        }
+    }
+}

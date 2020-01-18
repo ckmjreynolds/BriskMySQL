@@ -27,12 +27,15 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
-/// - Note: MariaDB documentation for SECURE_CONNECTION is incorrect.
-/// - See Also: [capabilities](https://mariadb.com/kb/en/connection/#capabilities)
+
+/**
+ - Note: MariaDB documentation for SECURE_CONNECTION is incorrect.
+ - See Also: [capabilities](https://mariadb.com/kb/en/connection/#capabilities)
+ */
 internal struct MySQLCapabilities: OptionSet {
     var rawValue: UInt64
 
+    // swiftlint:disable identifier_name
     static let CLIENT_MYSQL                         = MySQLCapabilities(rawValue: 1)
     static let FOUND_ROWS                           = MySQLCapabilities(rawValue: 2)
     static let CONNECT_WITH_DB                      = MySQLCapabilities(rawValue: 8)
@@ -57,5 +60,5 @@ internal struct MySQLCapabilities: OptionSet {
     static let MARIADB_CLIENT_PROGRESS              = MySQLCapabilities(rawValue: 1 << 32)
     static let MARIADB_CLIENT_COM_MULTI             = MySQLCapabilities(rawValue: 1 << 33)
     static let MARIADB_CLIENT_STMT_BULK_OPERATIONS  = MySQLCapabilities(rawValue: 1 << 34)
+    // swiftlint:enable identifier_name
 }
-*/

@@ -29,11 +29,12 @@
 // *********************************************************************************************************************
 import NIO
 
-/**
- Used to communicate protocol / command state between handlers and calls.
- */
-internal enum MySQLState {
-    case initialHandshake(connection: EventLoopPromise<SQLConnection>, params: [String: String])
-    case handshakeResponse(connection: EventLoopPromise<SQLConnection>, params: [String: String])
-    case ping(result: EventLoopPromise<Bool>)
+internal class MySQLStandardPacketEncoder: MessageToByteEncoder {
+    typealias OutboundIn = MySQLStandardPacket
+
+    func encode(data: MySQLStandardPacket, out: inout ByteBuffer) throws {
+        print("MySQLStandardPacketEncoder.encode")
+        var buffer = data.toByteBuffer()
+        out.writeBuffer(&buffer)
+    }
 }

@@ -27,7 +27,6 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
 import Foundation
 import NIO
 
@@ -35,8 +34,8 @@ public class MySQLConnection: SQLConnection {
     private let params: [String: String]
     private let channel: Channel
 
-    public static func connect(url: URL, on eventLoop: EventLoop) -> EventLoopFuture<SQLConnection> {
-        switch MySQLConnection.decodeURL(url: url) {
+    public static func connect(to: URL, on eventLoop: EventLoop) -> EventLoopFuture<SQLConnection> {
+        switch MySQLConnection.decodeURL(url: to) {
         case .failure(let error):
             return eventLoop.makeFailedFuture(error)
 
@@ -47,15 +46,16 @@ public class MySQLConnection: SQLConnection {
             return bootstrap.connect(host: params["host"]!, port: Int(params["port"]!)!).flatMap { channel in
                 let connection = eventLoop.makePromise(of: SQLConnection.self)
                 let state = MySQLState.initialHandshake(connection: connection, params: params)
+                let decoder = MySQLCompressedPacketDecoder()
+                let encoder = MySQLCompressedPacketEncoder()
 
-                return channel.pipeline.addHandler(ByteToMessageHandler(MySQLPacketDecoder()),
-                                                   name: "MySQLPacketDecoder", position: .last).flatMap {
-                    return channel.pipeline.addHandler(MessageToByteHandler(MySQLPacketEncoder()),
-                                                       name: "MySQLPacketEncoder", position: .last)
-                }.flatMap { _ in
-                    return channel.pipeline.addHandler(MySQLProtocolHandler(state: state),
-                                                       name: "MySQLProtocolHandler", position: .last)
-                }.flatMap { _ in
+                return channel.pipeline.addHandlers([
+                    ByteToMessageHandler(decoder),
+                    MessageToByteHandler(encoder),
+                    ByteToMessageHandler(MySQLStandardPacketDecoder()),
+                    MessageToByteHandler(MySQLStandardPacketEncoder()),
+                    MySQLProtocolHandler(state: state, decoder: decoder, encoder: encoder)
+                ]).flatMap { _ in
                     return connection.futureResult
                 }
             }
@@ -64,32 +64,31 @@ public class MySQLConnection: SQLConnection {
 
     public func isConnected() -> EventLoopFuture<Bool> {
         let result = channel.eventLoop.makePromise(of: Bool.self)
-        let state = MySQLState.ping(connection: self, result: result)
-        _ = channel.writeAndFlush(state)
-        return result.futureResult
+        let state = MySQLState.ping(result: result)
+        return channel.writeAndFlush(state).flatMap { result.futureResult }
     }
 
     public func close() -> EventLoopFuture<Void> {
         channel.close(mode: .all)
     }
 
-    private init(params: [String: String], channel: Channel) {
+    init(params: [String: String], channel: Channel) {
         self.params = params
         self.channel = channel
     }
 }
 
 extension MySQLConnection {
-    static private let configKeys = ["user", "password", "host", "port", "database", "compression"]
+    static private let configKeys = ["user", "password", "host", "port", "database", "ssl", "compression"]
 
     /// Decode the DB url into its component parts.
     internal static func decodeURL(url: URL) -> Result<[String: String], SQLError> {
         // Verify and decode the required parts.
-        guard (url.scheme ?? "") == "mysql" else { return .failure(.invalidURL()) }
-        guard let user = url.user else { return .failure(.invalidURL()) }
-        guard let password = url.password else { return .failure(.invalidURL()) }
-        guard let host = url.host, host.count > 0 else { return .failure(.invalidURL()) }
-        guard let port = url.port else { return .failure(.invalidURL()) }
+        guard (url.scheme ?? "") == "mysql" else { return .failure(.invalidURL) }
+        guard let user = url.user else { return .failure(.invalidURL) }
+        guard let password = url.password else { return .failure(.invalidURL) }
+        guard let host = url.host, host.count > 0 else { return .failure(.invalidURL) }
+        guard let port = url.port else { return .failure(.invalidURL) }
 
         // Create a dictionary with all of the required components.
         var dict = ["user": user, "password": password, "host": host, "port": String(port),
@@ -98,16 +97,20 @@ extension MySQLConnection {
         // Parse any options that were added to the URL.
         for query in (url.query ?? "").split(separator: "&") {
             let param = query.split(separator: "=")
-            guard param.count == 2 else { return .failure(.invalidURL())}
+            guard param.count == 2 else { return .failure(.invalidURL)}
 
             dict[String(param[0])] = String(param[1])
         }
 
+        // Add defaulted options.
+        dict["compression"] = dict["compression"] ?? "enabled"
+        dict["ssl"] = dict["ssl"] ?? "enabled"
+
         // Check to make sure known keys are present.
         if dict.filter({ !configKeys.contains($0.key) }).count != 0 {
-            return .failure(.invalidURL())
+            return .failure(.invalidURL)
         }
+
         return .success(dict)
     }
 }
-*/

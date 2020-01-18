@@ -39,9 +39,14 @@ import NIO
  - See Also: [Packet](https://mariadb.com/kb/en/0-packet)
 */
 internal protocol MySQLPacket: CustomDebugStringConvertible {
-    static var headerLength: Int { get }
+    /// Packets have a maxium payload size.
+    static var maxPacketLength: Int { get }
 
+    /// Packets have a four (standard) or seven (compressed) byte header.
+    static var headerLength: Int { get }
     var header: [UInt8] { get set }
+
+    /// Packet body of length packetLength bytes.
     var body: ByteBuffer { get set }
 
     /// int<3> - packet length
@@ -50,12 +55,23 @@ internal protocol MySQLPacket: CustomDebugStringConvertible {
     /// int<1> - sequence number
     var sequenceNumber: Int { get set }
 
-    /// Default initializer is required by default implementations provided below.
+    /// Initialize an empty packet with the given sequence number.
+    init(sequenceNumber: Int)
+
+    /// Create a new MySQLPacket from a ByteBuffer or fail.
+    init?(buffer: inout ByteBuffer)
     init()
+
+    /// Create a new ByteBuffer representing this MySQLPacket.
+    func toByteBuffer() -> ByteBuffer
 }
 
 // MARK: Default implementation of protocol requirements.
 extension MySQLPacket {
+    init(sequenceNumber: Int) { self.init(); self.sequenceNumber = sequenceNumber }
+
+    static var maxPacketLength: Int { 0xFFFFFF }
+
     var packetLength: Int {
         get { Int.fromLittleEndianBytes(header, bitWidth: 24) }
         set { header.replaceSubrange(0...2, with: newValue.toLittleEndianBytes(bitWidth: 24)) }
@@ -69,25 +85,21 @@ extension MySQLPacket {
 
 // MARK: ByteBuffer Conversions.
 extension MySQLPacket {
-    /// Create a new MySQLPacket from a ByteBuffer or return nil if unable.
-    static func fromByteBuffer(buffer: inout ByteBuffer) -> Self? {
-        var packet = Self()
+    init?(buffer: inout ByteBuffer) {
+        self.init(sequenceNumber: 0)
 
         guard buffer.readableBytes >= Self.headerLength else { return nil }
-        packet.header = buffer.readBytes(length: Self.headerLength)!
+        self.header = buffer.readBytes(length: Self.headerLength)!
 
-        guard buffer.readableBytes >= packet.packetLength else { return nil }
-        packet.body = buffer.readSlice(length: packet.packetLength)!
-
-        return packet
+        guard buffer.readableBytes >= packetLength else { return nil }
+        body = buffer.readSlice(length: packetLength)!
     }
 
-    /// Create a new ByteBuffer representing this MySQLPacket.
     func toByteBuffer() -> ByteBuffer {
         var buffer = ByteBufferAllocator().buffer(capacity: Self.headerLength + packetLength)
-
+        var body = self.body.getSlice(at: 0, length: packetLength)!
         buffer.writeBytes(header)
-        buffer.writeBytes(body.getBytes(at: 0, length: packetLength)!)
+        buffer.writeBuffer(&body)
 
         return buffer
     }

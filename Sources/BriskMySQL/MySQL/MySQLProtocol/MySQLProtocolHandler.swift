@@ -27,47 +27,78 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
 import NIO
-/*
-    // 224 - utf8mb4_unicode_ci
-    static let utf8mb4_unicode_ci: Int = 224
-*/
 
 internal class MySQLProtocolHandler: ChannelDuplexHandler {
-    typealias InboundIn = MySQLPacket
+    typealias InboundIn = MySQLStandardPacket
     typealias OutboundIn = MySQLState
-    typealias OutboundOut = MySQLPacket
+    typealias OutboundOut = MySQLStandardPacket
+
+    // 224 - utf8mb4_unicode_ci
+    static let utf8mb4_unicode_ci = 224
 
     private var state: MySQLState
+    private unowned var compressedDecoder: MySQLCompressedPacketDecoder
+    private unowned var compressedEncoder: MySQLCompressedPacketEncoder
 
-    init(state: MySQLState) { self.state = state }
+    init(state: MySQLState, decoder: MySQLCompressedPacketDecoder, encoder: MySQLCompressedPacketEncoder) {
+        self.compressedDecoder = decoder
+        self.compressedEncoder = encoder
+        self.state = state
+    }
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        state = unwrapOutboundIn(data)
+
+        switch state {
+        case .ping(_):
+            var packet = MySQLStandardPacket()
+            packet.writeInteger(MySQLStandardPacket.COM_PING)
+            context.writeAndFlush(wrapOutboundOut(packet), promise: promise)
+
+        default:
+            promise?.fail(SQLError.protocolError)
+        }
+    }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var packet = unwrapInboundIn(data)
 
+        #if DEBUG
+        if packet.isOK() { print(packet.okInfo()) }
+        if packet.isError() { print(packet.errorInfo()) }
+        #endif
+
         switch state {
-        case .initialHandshake(let connection, let params):
-            do {
-                try handleIntiialHandshakePacket(params: params, packet: &packet, context: context)
-                state = .handshakeResponse(connection: connection, params: params)
-            }
-            catch {
-                connection.fail(error)
+        case .initialHandshake(let connection, var params):
+            _ = handleIntiialHandshakePacket(params: &params, packet: &packet, context: context).always { result in
+                switch result {
+                case .failure(let error):
+                    connection.fail(error)
+                default:
+                    self.state = .handshakeResponse(connection: connection, params: params)
+                }
             }
 
         case .handshakeResponse(let connection, let params):
-            print(packet.debugDescription)
-            assert(packet.isOK)
-            var response = MySQLPacket(sequenceNumber: 0)
-            response.writeInteger(0x08, size: 1)
+            if packet.isOK() {
+                // Notify the encoder / decoder to switch to compressed packets if appropriate.
+                if params["compression"]! == "true" {
+                    compressedDecoder.compressionEnabled = true
+                    compressedEncoder.compressionEnabled = true
+                }
 
-            _ = context.writeAndFlush(wrapOutboundOut(response))
-            //connection.succeed(MySQLConnection(params: params, channel: context.channel))
+                connection.succeed(MySQLConnection(params: params, channel: context.channel))
+            } else if packet.isError() {
+                connection.fail(SQLError.sqlError(packet.errorInfo()))
+            }
 
-        case .ping(_, _):
-            break;
+        case .ping(let result):
+            if packet.isOK() {
+                result.succeed(true)
+            } else if packet.isError() {
+                result.fail(SQLError.protocolError)
+            }
         }
     }
 }
-*/

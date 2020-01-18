@@ -32,113 +32,70 @@ import NIO
 @testable import BriskMySQL
 
 final class MySQLStandardPacketTests: XCTestCase {
-    func testFixedLengthBytes() {
-        let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
+    func testBytes() {
         var packet = MySQLStandardPacket()
+        let testVector: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-        packet.writeBytes(testVector)
-        packet.body.moveReaderIndex(to: 0)
-        let result = packet.readBytes(length: testVector.count)
+        packet.writeBytes(testVector, encoding: .fixedLength(length: testVector.count))
+        packet.writeBytes(testVector, encoding: .lengthEncoded)
+        packet.writeBytes(testVector, encoding: .nulTerminated)
+        packet.writeBytes(testVector, encoding: .endOfFile)
 
-        XCTAssert(result == testVector, "MySQLStandardPacket.writeBytes/readBytes FAILED!")
-    }
-
-    func testFixedWidthInteger() {
-        let testVector = Int.random(in: Int.min...Int.max)
-        var packet = MySQLStandardPacket()
-
-        packet.writeInteger(testVector)
         packet.body.moveReaderIndex(to: 0)
 
-        guard let result: Int = packet.readInteger() else {
-            XCTFail("MySQLStandardPacket.writeInteger/readInteger FAILED!")
-            return
-        }
-
-        XCTAssert(result == testVector, "MySQLStandardPacket.writeInteger/readInteger FAILED!")
+        XCTAssert(testVector == packet.readBytes(encoding: .fixedLength(length: testVector.count)))
+        XCTAssert(testVector == packet.readBytes(encoding: .lengthEncoded))
+        XCTAssert(testVector == packet.readBytes(encoding: .nulTerminated))
+        XCTAssert(testVector == packet.readBytes(encoding: .endOfFile))
+        XCTAssertNil(packet.readBytes(encoding: .lengthEncoded))
     }
 
-    func testLengthEncodedInteger() {
-        let testMatrix = [nil, UInt.random(in: 0x00...0xFA), UInt.random(in: 0xFB...0xFFFF),
-                          UInt.random(in: 0x10000...0xFFFFFF), UInt.random(in: 0x1000000...UInt.max)]
-
-        for testVector in testMatrix {
-            var packet = MySQLStandardPacket()
-
-            packet.writeLenEncInteger(testVector)
-            packet.body.moveReaderIndex(to: 0)
-            let result: UInt? = packet.readLenEncInteger()
-
-            XCTAssert(result == testVector, "MySQLStandardPacket.writeLenEncInteger/readLenEncInteger FAILED!")
-        }
-    }
-
-    func testLengthEncodedBytes() {
-        let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
+    func testStrings() {
         var packet = MySQLStandardPacket()
-
-        packet.writeLenEncBytes(testVector)
-        packet.body.moveReaderIndex(to: 0)
-        let result = packet.readLenEncBytes()
-
-        XCTAssert(result == testVector, "MySQLStandardPacket.writeLenEncBytes/readLenEncBytes FAILED!")
-    }
-
-    func testEndOfFileLengthBytes() {
-        let testVector: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10]
-        var packet = MySQLStandardPacket()
-
-        packet.writeBytes(testVector)
-        packet.body.moveReaderIndex(to: 0)
-        let result = packet.readBytes()
-
-        XCTAssert(result == testVector, "MySQLStandardPacket.readBytes FAILED!")
-    }
-
-    func testFixedLengthString() {
         let testVector = "Now is the time for all good men to come to the aid of their country."
-        var packet = MySQLStandardPacket()
 
-        packet.writeString(testVector)
+        packet.writeString(testVector, encoding: .fixedLength(length: testVector.count))
+        packet.writeString(testVector, encoding: .lengthEncoded)
+        packet.writeString(testVector, encoding: .nulTerminated)
+        packet.writeString(testVector, encoding: .endOfFile)
+
         packet.body.moveReaderIndex(to: 0)
 
-        guard let result = packet.readString(length: testVector.utf8.count) else {
-            XCTFail("MySQLStandardPacket.writeString/readString FAILED!")
-            return
-        }
-
-        XCTAssert(result == testVector, "MySQLStandardPacket.writeBytes/readBytes FAILED!")
+        XCTAssert(testVector == packet.readString(encoding: .fixedLength(length: testVector.count)))
+        XCTAssert(testVector == packet.readString(encoding: .lengthEncoded))
+        XCTAssert(testVector == packet.readString(encoding: .nulTerminated))
+        XCTAssert(testVector == packet.readString(encoding: .endOfFile))
+        XCTAssertNil(packet.readString(encoding: .lengthEncoded))
     }
 
-    func testCString() {
-        let testVector = "Now is the time for all good men to come to the aid of their country."
+    func testIntegers() {
         var packet = MySQLStandardPacket()
+        let testMatrix: [UInt?] = [
+            UInt.random(in: UInt.min...UInt.max),           // .fixedLength(length: 8)
+            nil,                                            // .lengthEncoded
+            UInt.random(in: 0x00...0xFA),                   // .lengthEncoded
+            UInt.random(in: 0xFB...0xFFFF),                 // .lengthEncoded
+            UInt.random(in: 0x10000...0xFFFFFF),            // .lengthEncoded
+            UInt.random(in: 0x1000000...0xFFFFFFFFFFFFFFF), // .lengthEncoded
+            UInt.random(in: UInt.min...UInt.max)            // .endOfFile
+        ]
 
-        packet.writeCString(testVector)
+        packet.writeInteger(testMatrix[0], encoding: .fixedLength(length: 8))
+        packet.writeInteger(testMatrix[1], encoding: .lengthEncoded)
+        packet.writeInteger(testMatrix[2], encoding: .lengthEncoded)
+        packet.writeInteger(testMatrix[3], encoding: .lengthEncoded)
+        packet.writeInteger(testMatrix[4], encoding: .lengthEncoded)
+        packet.writeInteger(testMatrix[5], encoding: .lengthEncoded)
+        packet.writeInteger(testMatrix[6], encoding: .endOfFile)
+
         packet.body.moveReaderIndex(to: 0)
 
-        XCTAssert(packet.readCString() == testVector, "MySQLStandardPacket.writeCString/readCString FAILED!")
-    }
-
-    func testLengthEncodedStrings() {
-        let testVector = "Now is the time for all good men to come to the aid of their country."
-        var packet = MySQLStandardPacket()
-
-        packet.writeLenEncString(testVector)
-        packet.body.moveReaderIndex(to: 0)
-
-        XCTAssert(packet.readLenEncString() == testVector, "MySQLStandardPacket.write/readLenEncString FAILED!")
-    }
-
-    func testInvalidInputs() {
-        var packet = MySQLStandardPacket()
-        var result: UInt?
-
-        result = packet.readInteger(); XCTAssertNil(result, "MySQLStandardPacket.readInteger FAILED!")
-        result = packet.readLenEncInteger(); XCTAssertNil(result, "MySQLStandardPacket.readLenEncInteger FAILED!")
-
-        XCTAssertNil(packet.readLenEncBytes(), "MySQLStandardPacket.readLenEncBytes FAILED!")
-        XCTAssertNil(packet.readString(length: 1), "MySQLStandardPacket.readString FAILED!")
-        XCTAssertNil(packet.readLenEncString(), "MySQLStandardPacket.readLenEncString FAILED!")
+        XCTAssert(testMatrix[0] == packet.readInteger(encoding: .fixedLength(length: 8)))
+        XCTAssert(testMatrix[1] == packet.readInteger(encoding: .lengthEncoded))
+        XCTAssert(testMatrix[2] == packet.readInteger(encoding: .lengthEncoded))
+        XCTAssert(testMatrix[3] == packet.readInteger(encoding: .lengthEncoded))
+        XCTAssert(testMatrix[4] == packet.readInteger(encoding: .lengthEncoded))
+        XCTAssert(testMatrix[5] == packet.readInteger(encoding: .lengthEncoded))
+        XCTAssert(testMatrix[6] == packet.readInteger(encoding: .endOfFile))
     }
 }

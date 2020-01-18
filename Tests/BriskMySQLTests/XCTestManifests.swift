@@ -17,9 +17,6 @@ extension MySQLPacketTests {
     // to regenerate.
     static let __allTests__MySQLPacketTests = [
         ("testByteBufferConversions", testByteBufferConversions),
-        ("testInvalidByteBufferConversions", testInvalidByteBufferConversions),
-        ("testPacketLength", testPacketLength),
-        ("testSequenceNumber", testSequenceNumber),
     ]
 }
 
@@ -28,15 +25,9 @@ extension MySQLStandardPacketTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__MySQLStandardPacketTests = [
-        ("testCString", testCString),
-        ("testEndOfFileLengthBytes", testEndOfFileLengthBytes),
-        ("testFixedLengthBytes", testFixedLengthBytes),
-        ("testFixedLengthString", testFixedLengthString),
-        ("testFixedWidthInteger", testFixedWidthInteger),
-        ("testInvalidInputs", testInvalidInputs),
-        ("testLengthEncodedBytes", testLengthEncodedBytes),
-        ("testLengthEncodedInteger", testLengthEncodedInteger),
-        ("testLengthEncodedStrings", testLengthEncodedStrings),
+        ("testBytes", testBytes),
+        ("testIntegers", testIntegers),
+        ("testStrings", testStrings),
     ]
 }
 

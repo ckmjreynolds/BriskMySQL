@@ -27,21 +27,24 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
 import NIO
 
-internal struct MySQLPacketDecoder: ByteToMessageDecoder {
-    typealias InboundOut = MySQLPacket
+internal class MySQLCompressedPacketEncoder: MessageToByteEncoder {
+    typealias OutboundIn = ByteBuffer
+    var compressionEnabled = false
 
-    mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        guard let packet = MySQLPacket(packet: buffer) else { return .needMoreData }
-        context.fireChannelRead(wrapInboundOut(packet))
-        return .continue
-    }
+    func encode(data: ByteBuffer, out: inout ByteBuffer) throws {
+        print("MySQLCompressedPacketEncoder.encode")
+        var data = data
 
-    mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer,
- seenEOF: Bool) throws -> DecodingState {
-        return .needMoreData
+        if compressionEnabled {
+            guard let packet = MySQLStandardPacket(buffer: &data) else { throw SQLError.protocolError }
+            let compressed = MySQLCompressedPacket(packet: packet)
+
+            var buffer = compressed.toByteBuffer()
+            out.writeBuffer(&buffer)
+        } else {
+            out = data
+        }
     }
 }
-*/

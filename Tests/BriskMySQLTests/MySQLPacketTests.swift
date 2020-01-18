@@ -37,56 +37,26 @@ final class MySQLPacketTests: XCTestCase {
     // swiftlint:enable identifier_name
 
     func testByteBufferConversions() {
-        let testVector = MySQLPacketTests.COM_PING
-
-        // Create the buffer from the test vector.
         var buffer = ByteBufferAllocator().buffer(capacity: MySQLPacketTests.COM_PING.count)
-        buffer.writeBytes(testVector)
+        buffer.writeBytes(MySQLPacketTests.COM_PING)
 
-        // Test ByteBuffer->MySQLPacket.
-        guard let packet = MySQLStandardPacket.fromByteBuffer(buffer: &buffer) else {
-            XCTFail("MySQLPacket.fromByteBuffer FAILED!")
-            return
-        }
+        let packet = MySQLStandardPacket(buffer: &buffer)
+        XCTAssertNotNil(packet, #function + " MySQLPacket(bufffer:) FAILED!")
+        XCTAssert(packet?.packetLength == 0x01, #function + " packetLength FAILED!")
+        XCTAssert(packet?.sequenceNumber == 0x42, #function + " sequenceNumber FAILED!")
+        XCTAssert(packet?.debugDescription.contains("01 00 00 42 0e") ?? false, #function + " debugDescription FAILED!")
 
-        // Test that our debug output appears valid as well.
-        XCTAssert(packet.debugDescription.contains("01 00 00 42 0e"), "MySQLPacket.debugDescription FAILED!")
+        let testResult = packet?.toByteBuffer().getBytes(at: 0, length: MySQLPacketTests.COM_PING.count)
+        XCTAssert(testResult == MySQLPacketTests.COM_PING, #function + " toByteBuffer FAILED!")
 
-        // Test MySQLPacket->ButeBuffer
-        buffer = packet.toByteBuffer()
-        let result = buffer.getBytes(at: 0, length: MySQLPacketTests.COM_PING.count)
+        // Corrupt the packet length and attempt to parse the packet.
+        buffer.writeBytes(MySQLPacketTests.COM_PING.reversed())
+        XCTAssertNil(MySQLStandardPacket(buffer: &buffer), " MySQLPacket(bufffer:) FAILED!")
+        buffer.clear()
 
-        XCTAssert(result == testVector, "MySQLPacket.toByteBuffer FAILED!")
-    }
-
-    func testInvalidByteBufferConversions() {
-        let testMatrix = [MySQLPacketTests.COM_PING.prefix(3), MySQLPacketTests.COM_PING.prefix(4)]
-
-        for testVector in testMatrix {
-            // Create the buffer from the test vector.
-            var buffer = ByteBufferAllocator().buffer(capacity: MySQLPacketTests.COM_PING.count)
-            buffer.writeBytes(testVector)
-
-            // Test ByteBuffer->MySQLPacket.
-            XCTAssertNil(MySQLStandardPacket.fromByteBuffer(buffer: &buffer), "MySQLPacket.fromByteBuffer FAILED!")
-        }
-    }
-
-    func testPacketLength() {
-        let testVector = Int.random(in: (0x0...0xFFFFFF))
-
-        var packet = MySQLStandardPacket()
-        packet.packetLength = testVector
-
-        XCTAssert(packet.packetLength == testVector, "MySQLPacket.packetLength FAILED!")
-    }
-
-    func testSequenceNumber() {
-        let testVector = Int.random(in: (0x0...0xFF))
-
-        var packet = MySQLStandardPacket()
-        packet.sequenceNumber = testVector
-
-        XCTAssert(packet.sequenceNumber == testVector, "MySQLPacket.sequenceNumber FAILED!")
+        // Corrupt the packet header and attempt to parse the packet.
+        buffer.writeBytes([UInt8](repeating: 0, count: MySQLStandardPacket.headerLength - 1))
+        XCTAssertNil(MySQLStandardPacket(buffer: &buffer), " MySQLPacket(bufffer:) FAILED!")
+        buffer.clear()
     }
 }

@@ -27,18 +27,21 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
 import NIO
 
-internal struct MySQLPacketEncoder: MessageToByteEncoder {
-    typealias OutboundIn = MySQLPacket
+internal class MySQLStandardPacketDecoder: ByteToMessageDecoder {
+    typealias InboundOut = MySQLStandardPacket
 
-    func encode(data: MySQLPacket, out: inout ByteBuffer) throws {
-        out.writeInteger(UInt8(data.packetLength & 0xFF))
-        out.writeInteger(UInt8(data.packetLength >> 8 & 0xFF))
-        out.writeInteger(UInt8(data.packetLength >> 16 & 0xFF))
-        out.writeInteger(data.sequenceNumber)
-        out.writeBytes(data.body.getBytes(at: 0, length: data.packetLength)!)
+    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+        print("MySQLStandardPacketDecoder.decode")
+        guard let packet = MySQLStandardPacket(buffer: &buffer) else { return .needMoreData }
+        context.fireChannelRead(wrapInboundOut(packet))
+        return .continue
+    }
+
+    func decodeLast(context: ChannelHandlerContext,
+                             buffer: inout ByteBuffer,
+                             seenEOF: Bool) throws -> DecodingState {
+        return .needMoreData
     }
 }
-*/

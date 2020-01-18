@@ -27,16 +27,16 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
 import XCTest
 import NIO
 @testable import BriskMySQL
 
 final class BriskMySQLTests: XCTestCase {
     let testMatrix = [
-        //"proxysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:6033/testdb")!,
-        //"mariadb:latest": URL(string: "mysql://test_user:password@127.0.0.1:3301/testdb")!,
-        "mysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:3306/testdb")!
+        "proxysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:6033/testdb")!,
+        "mariadb:latest": URL(string: "mysql://test_user:password@127.0.0.1:3301/testdb")!,
+        "mysql:latest": URL(string: "mysql://test_user:password@127.0.0.1:3306/testdb")!,
+        "error:password": URL(string: "mysql://test_user:passwor@127.0.0.1:3306/testdb")!
     ]
     var eventLoopGroup: MultiThreadedEventLoopGroup!
 
@@ -49,20 +49,35 @@ final class BriskMySQLTests: XCTestCase {
     }
 
     func testConnection() {
-//        for server in testMatrix {
-//            do {
-//                _ = try MySQLConnection.connect(url: server.value, on: eventLoopGroup.next()).flatMap { conn in
-//                    conn.close()
-//                }.wait()
-//            }
-//            catch {
-//                XCTFail(server.key + " - ERROR: " + error.localizedDescription)
-//            }
-//        }
+        let eventLoop = eventLoopGroup.next()
+        for server in testMatrix {
+            do {
+                try MySQLConnection.withConnection(to: server.value, on: eventLoop) { conn in
+                    conn.isConnected()
+                }.map { result in
+                    if !server.key.contains("error:") {
+                        XCTAssert(result)
+                    } else {
+                        XCTFail()
+                    }
+                }.wait()
+            }
+            catch {
+                if !server.key.contains("error:") {
+                    XCTFail(server.key + " - ERROR: " + error.localizedDescription)
+                } else {
+                    switch server.key.split(separator: ":")[1] {
+                    case "password":
+                        XCTAssert(error.localizedDescription.contains("ERROR 1045"))
+                    default:
+                        XCTFail()
+                    }
+                }
+            }
+        }
     }
 
     static var allTests = [
         ("testConnection", testConnection)
     ]
 }
-*/

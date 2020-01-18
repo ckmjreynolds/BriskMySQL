@@ -27,193 +27,207 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
 import NIO
+import NIOSSL
 import CryptoSwift
 
 extension MySQLProtocolHandler {
     /**
-Initial Handshake Packet
-https://mariadb.com/kb/en/connection/#initial-handshake-packet
+     Initial Handshake Packet
+     https://mariadb.com/kb/en/connection/#initial-handshake-packet
+    */
+    func handleIntiialHandshakePacket(params: inout [String: String], packet: inout MySQLStandardPacket,
+                                      context: ChannelHandlerContext) -> EventLoopFuture<Void> {
 
-string<n> scramble 2nd part . Length = max(12, plugin data length - 9)
-string<1> reserved byte
-if (server_capabilities & PLUGIN_AUTH)
-string<NUL> authentication plugin name
-     */
-    func handleIntiialHandshakePacket(params: [String: String], packet: inout MySQLPacket,
-                                      context: ChannelHandlerContext) throws {
+        var done: EventLoopFuture<Void>
+
+        // Store the decoded handshake here for diagnostic purposes.
+        var handshake = [(tag: String, value: String?)]()
+        var tempInt: UInt?
+        var tempBytes: [UInt8]?
+
         // int<1> protocol version
-        guard let protocolVersion = packet.readUInt8() else { throw SQLError.protocolError() }
+        tempInt = packet.readInteger(encoding: .fixedLength(length: 1))
+        handshake.append(("protocol version", tempInt.debugDescription))
 
         // string<NUL> server version (MariaDB server version is by default prefixed by "5.5.5-")
-        let serverVersion = packet.readCString()
+        handshake.append(("server version", packet.readString()))
 
         // int<4> connection id
-        guard let connectionId = packet.readUInt32() else { throw SQLError.protocolError() }
+        tempInt = packet.readInteger(encoding: .fixedLength(length: 4))
+        handshake.append(("connection id", tempInt.debugDescription))
 
         // string<8> scramble 1st part (authentication seed)
-        guard let scramble1 = packet.readBytes(length: 8) else { throw SQLError.protocolError() }
+        let scramble1 = packet.readBytes(encoding: .fixedLength(length: 8))
+        handshake.append(("scramble 1st part", scramble1?.debugDescription))
 
         // string<1> reserved byte
-        guard let reserved1 = packet.readUInt8() else { throw SQLError.protocolError() }
+        tempBytes = packet.readBytes(encoding: .fixedLength(length: 1))
+        handshake.append(("reserved byte", tempBytes?.debugDescription))
 
         // int<2> server capabilities (1st part)
-        guard let serverCapabilities1 = packet.readUInt16() else { throw SQLError.protocolError() }
+        let capabilities1: UInt64? = packet.readInteger(encoding: .fixedLength(length: 2))
+        handshake.append(("server capabilities (1st part)", capabilities1.debugDescription))
 
         // int<1> server default collation
-        guard let serverDefaultCollation = packet.readUInt8() else { throw SQLError.protocolError() }
+        tempInt = packet.readInteger(encoding: .fixedLength(length: 1))
+        handshake.append(("server default collation", tempInt.debugDescription))
 
         // int<2> status flags
-        guard let statusFlags = packet.readUInt16() else { throw SQLError.protocolError() }
+        tempInt = packet.readInteger(encoding: .fixedLength(length: 2))
+        handshake.append(("status flags", tempInt.debugDescription))
 
         // int<2> server capabilities (2nd part)
-        guard let serverCapabilities2 = packet.readUInt16() else { throw SQLError.protocolError() }
+        let capabilities2: UInt64? = packet.readInteger(encoding: .fixedLength(length: 2))
+        handshake.append(("server capabilities (2nd part)", capabilities2.debugDescription))
 
         // int<1> plugin data length
-        guard let pluginDataLength = packet.readUInt8() else { throw SQLError.protocolError() }
+        let pluginDataLength: UInt64? = packet.readInteger(encoding: .fixedLength(length: 1))
+        handshake.append(("plugin data length", pluginDataLength.debugDescription))
 
         // string<6> filler
-        guard let filler = packet.readBytes(length: 6) else { throw SQLError.protocolError() }
+        tempBytes = packet.readBytes(encoding: .fixedLength(length: 6))
+        handshake.append(("filler", tempBytes?.debugDescription))
 
         // int<4> server capabilities 3rd part . MariaDB specific flags /* MariaDB 10.2 or later */
-        guard let serverCapabilities3 = packet.readUInt32() else { throw SQLError.protocolError() }
+        let capabilities3: UInt64? = packet.readInteger(encoding: .fixedLength(length: 4))
+        handshake.append(("server capabilities (3rd part)", capabilities3.debugDescription))
 
         // string<n> scramble 2nd part . Length = max(12, plugin data length - 9)
-        guard let scramble2 = packet.readBytes(length: Int(max(12, pluginDataLength - 9))) else {
-            throw SQLError.protocolError()
-        }
+        let scramble2 = packet.readBytes(encoding: .fixedLength(length: Int(max(12, (pluginDataLength ?? 21) - 9))))
+        handshake.append(("scramble 2nd part", scramble2?.debugDescription))
 
         // string<1> reserved byte
-        guard let reserved2 = packet.readUInt8() else { throw SQLError.protocolError() }
+        tempBytes = packet.readBytes(encoding: .fixedLength(length: 1))
+        handshake.append(("reserved byte", tempBytes?.debugDescription))
 
         // string<NUL> authentication plugin name
-        let pluginName = packet.readCString()
+        let pluginName = packet.readString()
+        handshake.append(("authentication plugin name", pluginName))
+
+        #if DEBUG
+        for entry in handshake { print(entry.tag + ": " + (entry.value ?? "nil")) }
+        #endif
+
+        // Validate that we parsed the handshake packet correctly.
+        // NOTE: This means force unwrapping is safe from here.
+        guard !handshake.contains(where: { $0.value == nil }) else {
+            return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
+        }
 
         // Combine all the flags and make sure the ones we depend on are correct.
-        let flags = MySQLCapabilities(rawValue: UInt64(serverCapabilities3) << 32 |
-            UInt64(serverCapabilities2) << 16 | UInt64(serverCapabilities1))
+        let flags = MySQLCapabilities(rawValue: capabilities3! << 32 | capabilities2! << 16 | capabilities1!)
 
         // Validate that we processed the entire packet and check flags that we depend on.
         // NOTE: We support COMPRESSion and SSL as well but do not require either.
-        guard packet.body.readableBytes == 0 else { throw SQLError.protocolError() }
-        guard flags.contains(.CONNECT_WITH_DB) else { throw SQLError.protocolError() }
-        guard flags.contains(.CLIENT_PROTOCOL_41) else { throw SQLError.protocolError() }
-        guard flags.contains(.SECURE_CONNECTION) else { throw SQLError.protocolError() }
-
-        #if DEBUG
-        print("************************************************************************")
-        print("                   Protocol version: \(protocolVersion)")
-        print("                     Server version: \(serverVersion)")
-        print("                      Connection ID: \(connectionId)")
-        print("                    Scramble part 1: \(scramble1)")
-        print("                         Reserved 1: \(reserved1)")
-        print("              Server capabilities 1: \(serverCapabilities1)")
-        print("                   Server collation: \(serverDefaultCollation)")
-        print("                       Status flags: \(statusFlags)")
-        print("              Server capabilities 2: \(serverCapabilities2)")
-        print("                 Plugin data length: \(pluginDataLength)")
-        print("                             filler: \(filler)")
-        print("              Server capabilities 3: \(serverCapabilities3)")
-        print("                    Scramble part 2: \(scramble2)")
-        print("                         Reserved 2: \(reserved2)")
-        print("                        Plugin name: \(pluginName)")
-        print("************************************")
-        print("                       CLIENT_MYSQL: \(flags.contains(.CLIENT_MYSQL))")
-        print("                         FOUND_ROWS: \(flags.contains(.FOUND_ROWS))")
-        print("                    CONNECT_WITH_DB: \(flags.contains(.CONNECT_WITH_DB))")
-        print("                           COMPRESS: \(flags.contains(.COMPRESS))")
-        print("                        LOCAL_FILES: \(flags.contains(.LOCAL_FILES))")
-        print("                       IGNORE_SPACE: \(flags.contains(.IGNORE_SPACE))")
-        print("                 CLIENT_PROTOCOL_41: \(flags.contains(.CLIENT_PROTOCOL_41))")
-        print("                 CLIENT_INTERACTIVE: \(flags.contains(.CLIENT_INTERACTIVE))")
-        print("                                SSL: \(flags.contains(.SSL))")
-        print("                       TRANSACTIONS: \(flags.contains(.TRANSACTIONS))")
-        print("                  SECURE_CONNECTION: \(flags.contains(.SECURE_CONNECTION))")
-        print("                   MULTI_STATEMENTS: \(flags.contains(.MULTI_STATEMENTS))")
-        print("                      MULTI_RESULTS: \(flags.contains(.MULTI_RESULTS))")
-        print("                   PS_MULTI_RESULTS: \(flags.contains(.PS_MULTI_RESULTS))")
-        print("                        PLUGIN_AUTH: \(flags.contains(.PLUGIN_AUTH))")
-        print("                      CONNECT_ATTRS: \(flags.contains(.CONNECT_ATTRS))")
-        print("     PLUGIN_AUTH_LENENC_CLIENT_DATA: \(flags.contains(.PLUGIN_AUTH_LENENC_CLIENT_DATA))")
-        print("               CLIENT_SESSION_TRACK: \(flags.contains(.CLIENT_SESSION_TRACK))")
-        print("               CLIENT_DEPRECATE_EOF: \(flags.contains(.CLIENT_DEPRECATE_EOF))")
-        print("  CLIENT_ZSTD_COMPRESSION_ALGORITHM: \(flags.contains(.CLIENT_ZSTD_COMPRESSION_ALGORITHM))")
-        print("        CLIENT_CAPABILITY_EXTENSION: \(flags.contains(.CLIENT_CAPABILITY_EXTENSION))")
-        print("            MARIADB_CLIENT_PROGRESS: \(flags.contains(.MARIADB_CLIENT_PROGRESS))")
-        print("           MARIADB_CLIENT_COM_MULTI: \(flags.contains(.MARIADB_CLIENT_COM_MULTI))")
-        print("MARIADB_CLIENT_STMT_BULK_OPERATIONS: \(flags.contains(.MARIADB_CLIENT_STMT_BULK_OPERATIONS))")
-        print("************************************************************************")
-        #endif
+        let requiredCapabilities: [MySQLCapabilities] = [.CONNECT_WITH_DB, .CLIENT_PROTOCOL_41, .SECURE_CONNECTION]
+        guard flags.isStrictSuperset(of: MySQLCapabilities(requiredCapabilities)) else {
+            return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
+        }
 
         // Create the Handshake Response Packet.
         // https://mariadb.com/kb/en/connection/#handshake-response-packet
-        var response = MySQLPacket(sequenceNumber: packet.sequenceNumber &+ 1)
+        var response = MySQLStandardPacket(sequenceNumber: packet.sequenceNumber + 1)
 
-        var clientFlags = MySQLCapabilities(arrayLiteral: [.CONNECT_WITH_DB, .CLIENT_PROTOCOL_41, .SECURE_CONNECTION,
-                                                           .PLUGIN_AUTH])
+        var clientFlags = MySQLCapabilities(arrayLiteral: [.CONNECT_WITH_DB, .CLIENT_PROTOCOL_41,
+                                                           .SECURE_CONNECTION, .PLUGIN_AUTH])
 
-        // Enable compression if supported and not turned off.
-//        if params["compress"] ?? "true" == "true" && flags.contains(.COMPRESS) {
-//            clientFlags = clientFlags.union(.COMPRESS)
-//        }
+        // Enable compression if it is supported by the server.
+        if params["compression"]! != "disabled" && flags.contains(.COMPRESS) {
+            clientFlags.insert(.COMPRESS)
+            params["compression"] = "true"
+        } else if params["compression"]! == "true" && !flags.contains(.COMPRESS) {
+            return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
+        }
+
+        // Enable SSL if it is supported by the server.
+        if params["ssl"]! != "disabled" && flags.contains(.SSL) {
+            clientFlags.insert(.SSL)
+            params["ssl"] = "true"
+        } else if params["ssl"]! == "true" && !flags.contains(.SSL) {
+            return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
+        }
 
         // int<4> client capabilities
-        response.writeUInt32(UInt32(clientFlags.rawValue & 0x00000000FFFFFFFF))
+        response.writeInteger(clientFlags.rawValue, encoding: .fixedLength(length: 4))
 
         // int<4> max packet size
-        response.writeUInt32(MySQLPacket.maxPacketBodyLength)
+        response.writeInteger(MySQLStandardPacket.maxPacketLength, encoding: .fixedLength(length: 4))
 
         // int<1> client character collation
         // 224 - utf8mb4_unicode_ci
-        response.writeUInt8(MySQLPacket.utf8mb4_unicode_ci)
+        response.writeInteger(MySQLProtocolHandler.utf8mb4_unicode_ci, encoding: .fixedLength(length: 1))
 
         // string<19> reserved
         // if not (server_capabilities & CLIENT_MYSQL)
         //      int<4> extended client capabilities
         // else
         //      string<4> reserved
-        response.writeBytes(Array<UInt8>(repeating: 0, count: 23))
+        response.writeBytes([UInt8](repeating: 0, count: 23))
 
-        // string<NUL> username
-        response.writeCString(params["user"]!)
+        // Write the SSL response and add an SSL handler if we are turning on SSL.
+        if clientFlags.contains(.SSL) {
+            done = context.writeAndFlush(wrapOutboundOut(response)).flatMap { _ in
+                response.sequenceNumber += 1
 
-        // else if (server_capabilities & CLIENT_SECURE_CONNECTION)
-        //      int<1> length of authentication response
-        //      string<fix> authentication response (length is indicated by previous field)
-        //
-        let passwordHash: [UInt8], saltedHash: [UInt8], authResponse: [UInt8]
-        let seed = scramble1 + scramble2
+                // No certificate verification.
+                var tlsConfiguration = TLSConfiguration.clientDefault
+                tlsConfiguration.certificateVerification = .none
 
-        switch pluginName {
-        case "mysql_native_password":
-            // The password is encrypted with: SHA1( password ) ^ SHA1( seed + SHA1( SHA1( password ) ) )
-            passwordHash = params["password"]!.bytes.sha1()
-            saltedHash = (seed + passwordHash.sha1()).sha1()
-/*
-        case "caching_sha2_password":
-            // Encryption is XOR(SHA256(password), SHA256(seed, SHA256(SHA256(password))))
-            passwordHash = params["password"]!.bytes.sha256()
-            saltedHash = (seed + passwordHash.sha256()).sha256()
-*/
-        default:
-            throw SQLError.protocolError("Protocol error: Unsupported authentication plugin.")
+                // Add the handler to the pipeline.
+                let sslContext = try! NIOSSLContext(configuration: tlsConfiguration)
+                let handler = try! NIOSSLClientHandler(context: sslContext, serverHostname: nil)
+
+                return context.channel.pipeline.addHandler(handler, position: .first)
+            }
+        } else {
+            done = context.eventLoop.makeSucceededFuture(())
         }
 
-        authResponse = passwordHash.enumerated().map { $0.element ^ saltedHash[$0.offset] }
-        response.writeUInt8(UInt8(authResponse.count))
-        response.writeBytes(authResponse)
+        let user = params["user"]!
+        let password = params["password"]!
+        let database = params["database"]!
 
-        // if (server_capabilities & CLIENT_CONNECT_WITH_DB)
-        //      string<NUL> default database name
-        response.writeCString(params["database"]!)
+        return done.flatMap { _ in
+            // string<NUL> username
+            response.writeString(user)
 
-        // if (server_capabilities & CLIENT_PLUGIN_AUTH)
-        //      string<NUL> authentication plugin name
-        response.writeCString(pluginName)
+            // else if (server_capabilities & CLIENT_SECURE_CONNECTION)
+            //      int<1> length of authentication response
+            //      string<fix> authentication response (length is indicated by previous field)
+            //
+            let passwordHash: [UInt8], saltedHash: [UInt8], authResponse: [UInt8]
+            let seed = scramble1! + scramble2!
 
-        // Send the response.
-        _ = context.writeAndFlush(wrapOutboundOut(response))
+            switch pluginName {
+            case "mysql_native_password":
+                // The password is encrypted with: SHA1( password ) ^ SHA1( seed + SHA1( SHA1( password ) ) )
+                passwordHash = password.bytes.sha1()
+                saltedHash = (seed + passwordHash.sha1()).sha1()
+    /*
+            case "caching_sha2_password":
+                // Encryption is XOR(SHA256(password), SHA256(seed, SHA256(SHA256(password))))
+                passwordHash = params["password"]!.bytes.sha256()
+                saltedHash = (seed + passwordHash.sha256()).sha256()
+    */
+            default:
+                return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
+            }
+
+            authResponse = passwordHash.enumerated().map { $0.element ^ saltedHash[$0.offset] }
+            response.writeInteger(authResponse.count, encoding: .fixedLength(length: 1))
+            response.writeBytes(authResponse)
+
+            // if (server_capabilities & CLIENT_CONNECT_WITH_DB)
+            //      string<NUL> default database name
+            response.writeString(database)
+
+            // if (server_capabilities & CLIENT_PLUGIN_AUTH)
+            //      string<NUL> authentication plugin name
+            response.writeString(pluginName!)
+
+            // Send the response.
+            return context.writeAndFlush(self.wrapOutboundOut(response))
+        }
     }
 }
-*/

@@ -27,12 +27,26 @@
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
-/*
+import Foundation
 import NIO
 
 public enum SQLError: Error {
-    case notImplemented(String = "Feature is not implemented.")
-    case invalidURL(String = "Connection URL is invalid.")
-    case protocolError(String = "Protocol error.")
+    case invalidURL
+    case protocolError
+    case sqlError(String)
 }
-*/
+
+extension SQLError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "The connection URL is invalid."
+
+        case .protocolError:
+            return "Error detected in protocol."
+
+        case .sqlError(let error):
+            return error
+        }
+    }
+}
