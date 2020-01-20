@@ -32,13 +32,14 @@ import NIOSSL
 import CryptoSwift
 
 extension MySQLProtocolHandler {
+    // Punting these warnings, do not see a benefit to breaking down handling of this one packet.
     // swiftlint:disable cyclomatic_complexity function_body_length
     /**
      Initial Handshake Packet
      https://mariadb.com/kb/en/connection/#initial-handshake-packet
     */
-    func handleIntiialHandshakePacket(params: inout [String: String], packet: inout MySQLStandardPacket,
-                                      context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+    func handleInitialHandshakePacket(context: ChannelHandlerContext, packet: inout MySQLStandardPacket,
+                                      params: inout [String: String]) -> EventLoopFuture<Void> {
 
         var done: EventLoopFuture<Void>
 

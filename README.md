@@ -4,13 +4,19 @@
 ![os](https://img.shields.io/badge/os-macOS-brightgreen) ![os](https://img.shields.io/badge/os-linux-brightgreen) ![MySQL](https://img.shields.io/badge/MySQL-8.0.18-brightgreen) ![MariaDB](https://img.shields.io/badge/MariaDB-10.4.11-brightgreen) ![ProxySQL](https://img.shields.io/badge/ProxySQL-2.0.8-brightgreen)
 
 ## Development Status
+### Protocols and Authentication
 | Feature | ProxySQL | MariaDB | MySQL | Notes |
 | ------- | -------- | ------- | ----- | ----- |
-| Packet compression | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
-| SSL/TLS - Protocol Encryption | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
 | Auth - `mysql_native_password` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
 | Auth - `caching_sha2_password` | N/A | N/A | :heavy_check_mark:* | Requires SSL/TLS. |
+| SSL/TLS - Protocol Encryption | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
+| Packet compression | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
+
+### Features
+| Feature | ProxySQL | MariaDB | MySQL | Notes |
+| ------- | -------- | ------- | ----- | ----- |
 | `COM_PING` aka `isConnected()` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
+| `COM_QUERY` | :x: | :x: | :x: | Target `0.1.2` |
 
 ## Sample Usage
 ```Swift
@@ -22,7 +28,7 @@ var eventLoopGroup: MultiThreadedEventLoopGroup = MultiThreadedEventLoopGroup(nu
 let eventLoop = eventLoopGroup.next()
 
 do {
-    try MySQLConnection.withConnection(to: URL(string: "mysql://root:@127.0.0.1:3306/mysql")!, on: eventLoop) { conn in
+    try MySQLConnection.withDatabase(to: URL(string: "mysql://root:@127.0.0.1:3306/mysql")!, on: eventLoop) { conn in
         conn.isConnected()
     }.map { result in
         print(result)

@@ -34,14 +34,14 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
     typealias OutboundIn = MySQLState
     typealias OutboundOut = MySQLStandardPacket
 
-    // swiftlint:disable identifier_name
     // 224 - utf8mb4_unicode_ci
+    // swiftlint:disable identifier_name
     static let utf8mb4_unicode_ci = 224
     // swiftlint:enable identifier_name
 
-    private var state: MySQLState
-    private unowned var compressedDecoder: MySQLCompressedPacketDecoder
-    private unowned var compressedEncoder: MySQLCompressedPacketEncoder
+    var state: MySQLState
+    unowned var compressedDecoder: MySQLCompressedPacketDecoder
+    unowned var compressedEncoder: MySQLCompressedPacketEncoder
 
     init(state: MySQLState, decoder: MySQLCompressedPacketDecoder, encoder: MySQLCompressedPacketEncoder) {
         self.compressedDecoder = decoder
@@ -54,16 +54,13 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
 
         switch state {
         case .ping:
-            var packet = MySQLStandardPacket()
-            packet.writeInteger(MySQLStandardPacket.COM_PING)
-            context.writeAndFlush(wrapOutboundOut(packet), promise: promise)
+            sendPing(context: context, promise: promise)
 
         default:
             promise?.fail(SQLError.protocolError)
         }
     }
 
-    // swiftlint:disable cyclomatic_complexity
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var packet = unwrapInboundIn(data)
 
@@ -74,41 +71,20 @@ internal class MySQLProtocolHandler: ChannelDuplexHandler {
 
         switch state {
         case .initialHandshake(let connection, var params):
-            _ = handleIntiialHandshakePacket(params: &params, packet: &packet, context: context).always { result in
-                switch result {
-                case .failure(let error):
-                    connection.fail(error)
-                default:
-                    self.state = .handshakeResponse(connection: connection, params: params)
-                }
+            _ = handleInitialHandshakePacket(context: context, packet: &packet, params: &params).map { _ in
+                self.state = .handshakeResponse(connection: connection, params: params)
+            }.whenFailure { error in
+                connection.fail(error)
             }
 
         case .handshakeResponse(let connection, let params):
-            if packet.isOK() {
-                // Notify the encoder / decoder to switch to compressed packets if appropriate.
-                if params["compression"]! == "true" {
-                    compressedDecoder.compressionEnabled = true
-                    compressedEncoder.compressionEnabled = true
-                }
+            handleHandshakeResponse(context: context, packet: &packet, connection: connection, params: params)
 
-                connection.succeed(MySQLConnection(params: params, channel: context.channel))
-            } else if packet.isError() {
-                connection.fail(SQLError.sqlError(packet.errorInfo()))
-            } else if packet.isFastAuthenticationResult() {
-                var response = MySQLStandardPacket(sequenceNumber: packet.sequenceNumber + 1)
-                response.writeString(params["password"]!)
-                _ = context.writeAndFlush(wrapOutboundOut(response))
-            } else {
-                connection.fail(SQLError.protocolError)
-            }
+        case .ping(_, let result):
+            handlePing(context: context, packet: &packet, result: result)
 
-        case .ping(let result):
-            if packet.isOK() {
-                result.succeed(true)
-            } else if packet.isError() {
-                result.fail(SQLError.protocolError)
-            }
+        case .idle:
+            preconditionFailure("ERROR: Packet received where none expected!")
         }
     }
-    // swiftlint:enable cyclomatic_complexity
 }

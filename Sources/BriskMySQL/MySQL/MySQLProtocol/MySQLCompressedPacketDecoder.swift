@@ -34,10 +34,9 @@ internal class MySQLCompressedPacketDecoder: ByteToMessageDecoder {
     var compressionEnabled = false
 
     func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        print("MySQLCompressedPacketDecoder.decode")
         if compressionEnabled {
             guard var packet = MySQLCompressedPacket(buffer: &buffer) else { return .needMoreData }
-            context.fireChannelRead(wrapInboundOut(packet.decompressBody()))
+            context.fireChannelRead(wrapInboundOut(try packet.decompressBody()))
             return .continue
         } else {
             guard let packet = MySQLStandardPacket(buffer: &buffer) else { return .needMoreData }

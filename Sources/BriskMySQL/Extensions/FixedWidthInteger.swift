@@ -28,12 +28,12 @@
 //  2019-12-24  CDR     Initial Version
 // *********************************************************************************************************************
 extension FixedWidthInteger {
-    internal func toLittleEndianBytes(bitWidth: Int = Self.bitWidth) -> [UInt8] {
+    func toLittleEndianBytes(bitWidth: Int = Self.bitWidth) -> [UInt8] {
         precondition(bitWidth.isMultiple(of: 8) && bitWidth <= Self.bitWidth)
         return withUnsafeBytes(of: self.littleEndian) { Array(Array($0).prefix(bitWidth / 8)) }
     }
 
-    internal static func fromLittleEndianBytes(_ bytes: [UInt8], bitWidth: Int = Self.bitWidth) -> Self {
+    static func fromLittleEndianBytes(_ bytes: [UInt8], bitWidth: Int = Self.bitWidth) -> Self {
         precondition(bitWidth.isMultiple(of: 8) && bitWidth <= Self.bitWidth && bytes.count >= bitWidth / 8)
         return bytes.prefix(bitWidth / 8).reversed().reduce(0) { $0 << 8 | Self($1) }
     }

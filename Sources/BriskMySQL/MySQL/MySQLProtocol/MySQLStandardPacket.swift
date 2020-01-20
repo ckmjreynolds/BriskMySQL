@@ -107,7 +107,7 @@ extension MySQLStandardPacket {
         let warningCount: UInt16 = readInteger()!
         let info = readString(encoding: .endOfFile)!
 
-        return "rows: \(affectedRows) id: \(lastInsertID) status: \(serverStatus) " +
+        return "OK_Packet: rows: \(affectedRows) id: \(lastInsertID) status: \(serverStatus) " +
             "warnings: \(warningCount) info: " + info
     }
 }

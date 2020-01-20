@@ -25,23 +25,30 @@
 //
 //  Date        Author  Description
 //  ----        ------  -----------
-//  2019-12-24  CDR     Initial Version
+//  2020-01-19  CDR     Initial Version
 // *********************************************************************************************************************
 import NIO
 
-internal class MySQLStandardPacketDecoder: ByteToMessageDecoder {
-    typealias InboundOut = MySQLStandardPacket
+extension MySQLProtocolHandler {
+    func handleHandshakeResponse(context: ChannelHandlerContext, packet: inout MySQLStandardPacket,
+                                 connection: TimedPromise<SQLConnection>, params: [String: String]) {
 
-    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        guard let packet = MySQLStandardPacket(buffer: &buffer) else { return .needMoreData }
-        context.fireChannelRead(wrapInboundOut(packet))
-        return .continue
-    }
+        if packet.isOK() {
+            // Notify the encoder / decoder to switch to compressed packets if appropriate.
+            if params["compression"]! == "true" {
+                compressedDecoder.compressionEnabled = true
+                compressedEncoder.compressionEnabled = true
+            }
 
-    func decodeLast(context: ChannelHandlerContext,
-                    buffer: inout ByteBuffer,
-                    seenEOF: Bool) throws -> DecodingState {
-
-        return .needMoreData
+            connection.succeed(MySQLConnection(params: params, channel: context.channel))
+        } else if packet.isError() {
+            connection.fail(SQLError.sqlError(packet.errorInfo()))
+        } else if packet.isFastAuthenticationResult() {
+            var response = MySQLStandardPacket(sequenceNumber: packet.sequenceNumber + 1)
+            response.writeString(params["password"]!)
+            _ = context.writeAndFlush(wrapOutboundOut(response))
+        } else {
+            connection.fail(SQLError.protocolError)
+        }
     }
 }

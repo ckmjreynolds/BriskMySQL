@@ -34,12 +34,11 @@ internal class MySQLCompressedPacketEncoder: MessageToByteEncoder {
     var compressionEnabled = false
 
     func encode(data: ByteBuffer, out: inout ByteBuffer) throws {
-        print("MySQLCompressedPacketEncoder.encode")
         var data = data
 
         if compressionEnabled {
             guard let packet = MySQLStandardPacket(buffer: &data) else { throw SQLError.protocolError }
-            let compressed = MySQLCompressedPacket(packet: packet)
+            let compressed = try MySQLCompressedPacket(packet: packet)
 
             var buffer = compressed.toByteBuffer()
             out.writeBuffer(&buffer)

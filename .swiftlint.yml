@@ -26,6 +26,7 @@
 #  Date        Author  Description
 #  ----        ------  -----------
 #  2019-12-26  CDR     Initial Version
+#  2020-01-19  CDR     Enable check for missing documentation.
 # **************************************************************************************
 excluded:
   - .build/
@@ -70,3 +71,4 @@ identifier_name:
 
 opt_in_rules:
   - file_header
+  - missing_docs
