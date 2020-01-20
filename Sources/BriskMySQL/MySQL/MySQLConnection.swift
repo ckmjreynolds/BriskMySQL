@@ -26,13 +26,17 @@
 //  Date        Author  Description
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
+//  2020-01-19  CDR     Added connect_timeout and command_timeout.
 // *********************************************************************************************************************
 import Foundation
 import NIO
 
 public class MySQLConnection: SQLConnection {
-    private let params: [String: String]
-    private let channel: Channel
+    var params: [String: String]
+    let channel: Channel
+
+    let connectTimeout: Int
+    let commandTimeout: Int
 
     public static func connect(to: URL, on eventLoop: EventLoop) -> EventLoopFuture<SQLConnection> {
         switch MySQLConnection.decodeURL(url: to) {
@@ -40,11 +44,13 @@ public class MySQLConnection: SQLConnection {
             return eventLoop.makeFailedFuture(error)
 
         case .success(let params):
-            let bootstrap = ClientBootstrap(group: eventLoop).channelOption(
+            let timeout = Int64(params["connect_timeout"]!)!
+
+            let bootstrap = ClientBootstrap(group: eventLoop).connectTimeout(.seconds(timeout)).channelOption(
                 ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
 
             return bootstrap.connect(host: params["host"]!, port: Int(params["port"]!)!).flatMap { channel in
-                let connection = eventLoop.makePromise(of: SQLConnection.self)
+                let connection = eventLoop.makePromise(of: SQLConnection.self, timeout: Int(timeout))
                 let state = MySQLState.initialHandshake(connection: connection, params: params)
                 let decoder = MySQLCompressedPacketDecoder()
                 let encoder = MySQLCompressedPacketEncoder()
@@ -62,26 +68,28 @@ public class MySQLConnection: SQLConnection {
         }
     }
 
+    init(params: [String: String], channel: Channel) {
+        self.params = params
+        self.channel = channel
+        self.connectTimeout = Int(params["connect_timeout"]!)!
+        self.commandTimeout = Int(params["connect_timeout"]!)!
+    }
+
     public func isConnected() -> EventLoopFuture<Bool> {
-        let result = channel.eventLoop.makePromise(of: Bool.self)
-        let state = MySQLState.ping(result: result)
-        return channel.writeAndFlush(state).flatMap { result.futureResult }
+        let promise = channel.eventLoop.makePromise(of: Bool.self, timeout: commandTimeout)
+        let state = MySQLState.ping(connection: self, promise: promise)
+        return channel.writeAndFlush(state).flatMap { promise.futureResult }
     }
 
     public func close() -> EventLoopFuture<Void> {
         channel.close(mode: .all)
     }
-
-    init(params: [String: String], channel: Channel) {
-        self.params = params
-        self.channel = channel
-    }
 }
 
 extension MySQLConnection {
-    static private let configKeys = ["user", "password", "host", "port", "database", "ssl", "compression"]
+    static private let configKeys = ["user", "password", "host", "port", "database",
+                                     "ssl", "compression", "connect_timeout", "command_timeout"]
 
-    /// Decode the DB url into its component parts.
     internal static func decodeURL(url: URL) -> Result<[String: String], SQLError> {
         // Verify and decode the required parts.
         guard (url.scheme ?? "") == "mysql" else { return .failure(.invalidURL) }
@@ -103,6 +111,8 @@ extension MySQLConnection {
         }
 
         // Add defaulted options.
+        dict["connect_timeout"] = dict["connect_timeout"] ?? "5"
+        dict["command_timeout"] = dict["command_timeout"] ?? "15"
         dict["compression"] = dict["compression"] ?? "enabled"
         dict["ssl"] = dict["ssl"] ?? "enabled"
 

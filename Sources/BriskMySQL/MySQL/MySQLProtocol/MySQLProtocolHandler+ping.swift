@@ -25,23 +25,22 @@
 //
 //  Date        Author  Description
 //  ----        ------  -----------
-//  2019-12-24  CDR     Initial Version
+//  2020-01-19  CDR     Initial Version
 // *********************************************************************************************************************
 import NIO
 
-internal class MySQLStandardPacketDecoder: ByteToMessageDecoder {
-    typealias InboundOut = MySQLStandardPacket
-
-    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        guard let packet = MySQLStandardPacket(buffer: &buffer) else { return .needMoreData }
-        context.fireChannelRead(wrapInboundOut(packet))
-        return .continue
+extension MySQLProtocolHandler {
+    func sendPing(context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) {
+        var packet = MySQLStandardPacket()
+        packet.writeInteger(MySQLStandardPacket.COM_PING)
+        context.writeAndFlush(wrapOutboundOut(packet), promise: promise)
     }
 
-    func decodeLast(context: ChannelHandlerContext,
-                    buffer: inout ByteBuffer,
-                    seenEOF: Bool) throws -> DecodingState {
-
-        return .needMoreData
+    func handlePing(context: ChannelHandlerContext, packet: inout MySQLStandardPacket, result: TimedPromise<Bool>) {
+        if packet.isOK() {
+            result.succeed(true)
+        } else if packet.isError() {
+            result.fail(SQLError.protocolError)
+        }
     }
 }

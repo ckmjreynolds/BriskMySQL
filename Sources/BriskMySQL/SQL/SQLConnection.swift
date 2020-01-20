@@ -31,19 +31,28 @@ import Foundation
 import NIO
 import NIOSSL
 
+/// Synonym for EventLoopFuture.
+public typealias Future = EventLoopFuture
+
+/// Public interface to MySQLConnection should be through SQLConnection.
 public protocol SQLConnection {
-    typealias Closure<T> = (SQLConnection) -> EventLoopFuture<T>
+    /// Creates a database connection and executes the closure, closing the connection once the closure completes.
+    static func withDatabase<T>(to: URL, on: EventLoop, closure: @escaping (SQLConnection) -> Future<T>) -> Future<T>
 
-    static func withConnection<T>(to: URL, on: EventLoop, closure: @escaping Closure<T>) -> EventLoopFuture<T>
-    static func connect(to: URL, on: EventLoop) -> EventLoopFuture<SQLConnection>
-    func close() -> EventLoopFuture<Void>
+    /// Creates a database connection on the provided EventLoop using the URL provided.
+    static func connect(to: URL, on: EventLoop) -> Future<SQLConnection>
 
-    func isConnected() -> EventLoopFuture<Bool>
+    /// Closes the database connection.
+    func close() -> Future<Void>
+
+    /// Returns true if the connection is still live..
+    func isConnected() -> Future<Bool>
 }
 
-extension SQLConnection {
-    public static func withConnection<T>(to: URL, on: EventLoop, closure: @escaping Closure<T>) -> EventLoopFuture<T> {
-        self.connect(to: to, on: on).flatMap { conn -> EventLoopFuture<T> in
+public extension SQLConnection {
+    /// Creates a database connection and executes the closure, closing the connection once the closure completes.
+    static func withDatabase<T>(to: URL, on: EventLoop, closure: @escaping (SQLConnection) -> Future<T>) -> Future<T> {
+        self.connect(to: to, on: on).flatMap { conn -> Future<T> in
             closure(conn).map { result in
                 _ = conn.close()
                 return result

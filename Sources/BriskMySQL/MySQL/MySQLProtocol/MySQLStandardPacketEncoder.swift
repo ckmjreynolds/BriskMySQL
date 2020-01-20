@@ -33,7 +33,6 @@ internal class MySQLStandardPacketEncoder: MessageToByteEncoder {
     typealias OutboundIn = MySQLStandardPacket
 
     func encode(data: MySQLStandardPacket, out: inout ByteBuffer) throws {
-        print("MySQLStandardPacketEncoder.encode")
         var buffer = data.toByteBuffer()
         out.writeBuffer(&buffer)
     }

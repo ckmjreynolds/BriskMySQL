@@ -25,23 +25,38 @@
 //
 //  Date        Author  Description
 //  ----        ------  -----------
-//  2019-12-24  CDR     Initial Version
+//  2020-01-19  CDR     Initial Version
 // *********************************************************************************************************************
 import NIO
 
-internal class MySQLStandardPacketDecoder: ByteToMessageDecoder {
-    typealias InboundOut = MySQLStandardPacket
+class TimedPromise<T> {
+    let promise: EventLoopPromise<T>
+    var terminator: Scheduled<Void>?
 
-    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        guard let packet = MySQLStandardPacket(buffer: &buffer) else { return .needMoreData }
-        context.fireChannelRead(wrapInboundOut(packet))
-        return .continue
+    init(eventLoop: EventLoop, timeout: Int, file: StaticString = #file, line: UInt = #line) {
+        precondition(timeout > 0)
+
+        // Create the promise.
+        promise = eventLoop.makePromise(of: T.self)
+
+        // ... and schedule its termination.
+        terminator = eventLoop.scheduleTask(in: .seconds(Int64(timeout))) {
+            self.promise.fail(SQLError.timeout)
+        }
     }
 
-    func decodeLast(context: ChannelHandlerContext,
-                    buffer: inout ByteBuffer,
-                    seenEOF: Bool) throws -> DecodingState {
+    func succeed(_ value: T) { terminator?.cancel(); promise.succeed(value) }
+    func fail(_ error: Error) { terminator?.cancel(); promise.fail(error) }
+    var futureResult: EventLoopFuture<T> { promise.futureResult }
+}
 
-        return .needMoreData
+extension EventLoop {
+    /// Creates and returns a new `EventLoopPromise` that will be automatically failed at timeout seconds..
+    func makePromise<T>(of type: T.Type = T.self, timeout: Int, file: StaticString = #file,
+                        line: UInt = #line) -> TimedPromise<T> {
+
+        // Create the promise as normal in NIO but schedule a task to fail it after the timeout.
+        let promise = TimedPromise<T>(eventLoop: self, timeout: timeout, file: file, line: line)
+        return promise
     }
 }

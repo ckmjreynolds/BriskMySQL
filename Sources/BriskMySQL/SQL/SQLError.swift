@@ -30,9 +30,11 @@
 import Foundation
 import NIO
 
+/// BriskMySQL errors returned by public interfaces.
 public enum SQLError: Error {
     case invalidURL
     case protocolError
+    case timeout
     case sqlError(String)
 }
 
@@ -44,6 +46,9 @@ extension SQLError: LocalizedError {
 
         case .protocolError:
             return "Error detected in protocol."
+
+        case .timeout:
+            return "The operation failed to complete before the designated timeout."
 
         case .sqlError(let error):
             return error

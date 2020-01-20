@@ -32,7 +32,7 @@ import XCTest
 import NIO
 @testable import BriskMySQL
 
-final class BriskMySQLTests: XCTestCase {
+final class ConnectionTests: XCTestCase {
     let dbhost = ProcessInfo.processInfo.environment["DB_HOST"] ?? "127.0.0.1"
     let dbPassword = ProcessInfo.processInfo.environment["DB_PASSWORD"] ?? "password"
 
@@ -47,7 +47,7 @@ final class BriskMySQLTests: XCTestCase {
             "error:password": URL(string: "mysql://test_user:passwor@" + dbhost + ":3306/tempdb")!
         ]
 
-        eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     }
 
     override func tearDown() {
@@ -58,7 +58,7 @@ final class BriskMySQLTests: XCTestCase {
         let eventLoop = eventLoopGroup.next()
         for server in testMatrix {
             do {
-                try MySQLConnection.withConnection(to: server.value, on: eventLoop) { conn in
+                try MySQLConnection.withDatabase(to: server.value, on: eventLoop) { conn in
                     conn.isConnected()
                 }.map { result in
                     if !server.key.contains("error:") {

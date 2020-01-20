@@ -33,7 +33,9 @@ import NIO
  Used to communicate protocol / command state between handlers and calls.
  */
 internal enum MySQLState {
-    case initialHandshake(connection: EventLoopPromise<SQLConnection>, params: [String: String])
-    case handshakeResponse(connection: EventLoopPromise<SQLConnection>, params: [String: String])
-    case ping(result: EventLoopPromise<Bool>)
+    case initialHandshake(connection: TimedPromise<SQLConnection>, params: [String: String])
+    case handshakeResponse(connection: TimedPromise<SQLConnection>, params: [String: String])
+    case ping(connection: MySQLConnection, promise: TimedPromise<Bool>)
+
+    case idle
 }
