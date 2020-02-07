@@ -27,11 +27,19 @@
 //  Date        Author  Description
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
+//  2020-02-07  CDR     Update dependencies:
+//                      - swift-nio 2.13.0
+//                      - swift-nio-ssl 2.6.0
+//                      - SwiftCompression 1.0.3
+//                      - swift-crypto 1.0.0
 // *********************************************************************************************************************
 import PackageDescription
 
 let package = Package(
     name: "BriskMySQL",
+    platforms: [
+        .macOS(.v10_15)
+    ],
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
         .library(name: "BriskMySQL", targets: ["BriskMySQL"])
@@ -39,15 +47,15 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-nio.git", .exact("2.12.0")),
-        .package(url: "https://github.com/apple/swift-nio-ssl.git", .exact("2.5.0")),
-        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .exact("1.3.0")),
-        .package(url: "https://github.com/SusanDoggie/SwiftCompression.git", .exact("1.0.2"))
+        .package(url: "https://github.com/apple/swift-nio.git", .exact("2.13.0")),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", .exact("2.6.0")),
+        .package(url: "https://github.com/apple/swift-crypto.git", .exact("1.0.0")),
+        .package(url: "https://github.com/SusanDoggie/SwiftCompression.git", .exact("1.0.3"))
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in dependencies.
-        .target(name: "BriskMySQL", dependencies: ["NIO", "NIOSSL", "CryptoSwift", "SwiftCompression"]),
+        .target(name: "BriskMySQL", dependencies: ["NIO", "NIOSSL", "Crypto", "SwiftCompression"]),
         .testTarget(name: "BriskMySQLTests", dependencies: ["BriskMySQL"])
     ]
 )

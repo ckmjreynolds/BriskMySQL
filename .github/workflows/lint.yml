@@ -26,6 +26,7 @@
 #  Date        Author  Description
 #  ----        ------  -----------
 #  2019-12-24  CDR     Initial Version
+#  2020-02-07  CDR     Bump to 3.1.0.
 # **************************************************************************************
 name: lint
 
@@ -37,4 +38,4 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: GitHub Action for SwiftLint
-        uses: norio-nomura/action-swiftlint@3.0.1
+        uses: norio-nomura/action-swiftlint@3.1.0

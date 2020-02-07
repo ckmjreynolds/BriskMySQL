@@ -26,6 +26,8 @@
 //  Date        Author  Description
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
+//  2020-02-07  CDR     Update dependencies:
+//                      - swift-crypto 1.0.0
 // *********************************************************************************************************************
 import Foundation
 import NIO
@@ -67,7 +69,7 @@ extension MySQLCompressedPacket {
             let deflate = try Deflate(windowBits: 15)
             let compressed = try deflate.process(Data(body.getBytes(at: 0, length: body.readableBytes)!))
 
-            self.body.clear(); self.body.writeBytes(compressed.bytes)
+            self.body.clear(); self.body.writeBytes(compressed)
             self.packetLength = body.readableBytes
         } else {
             // This is an uncompressed, compressed packet.
@@ -83,7 +85,7 @@ extension MySQLCompressedPacket {
         let inflate = try Inflate()
         let decompressed = try inflate.process(Data( body.getBytes(at: 0, length: body.readableBytes)!))
 
-        self.body.clear(); self.body.writeBytes(decompressed.bytes)
+        self.body.clear(); self.body.writeBytes(decompressed)
         return self.body
     }
 

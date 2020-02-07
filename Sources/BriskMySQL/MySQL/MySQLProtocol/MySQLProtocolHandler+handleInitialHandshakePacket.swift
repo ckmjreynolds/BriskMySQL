@@ -26,10 +26,13 @@
 //  Date        Author  Description
 //  ----        ------  -----------
 //  2019-12-24  CDR     Initial Version
+//  2020-02-07  CDR     Update dependencies:
+//                      - swift-crypto 1.0.0
 // *********************************************************************************************************************
+import Foundation
 import NIO
 import NIOSSL
-import CryptoSwift
+import Crypto
 
 extension MySQLProtocolHandler {
     // Punting these warnings, do not see a benefit to breaking down handling of this one packet.
@@ -198,14 +201,23 @@ extension MySQLProtocolHandler {
             //      int<1> length of authentication response
             //      string<fix> authentication response (length is indicated by previous field)
             //
-            let passwordHash: [UInt8], saltedHash: [UInt8], authResponse: [UInt8]
+            var passwordHash1: [UInt8], passwordHash2: [UInt8], saltedHash: [UInt8], authResponse: [UInt8]
             let seed = scramble1! + scramble2!
 
             switch pluginName {
             case "mysql_native_password":
                 // The password is encrypted with: SHA1( password ) ^ SHA1( seed + SHA1( SHA1( password ) ) )
-                passwordHash = password.bytes.sha1()
-                saltedHash = (seed + passwordHash.sha1()).sha1()
+                var sha1 = Insecure.SHA1()
+                sha1.update(data: Data(password.utf8))
+                passwordHash1 = [UInt8](sha1.finalize())
+
+                sha1 = Insecure.SHA1()
+                sha1.update(data: Data(passwordHash1))
+                passwordHash2 = [UInt8](sha1.finalize())
+
+                sha1 = Insecure.SHA1()
+                sha1.update(data: Data(seed + passwordHash2))
+                saltedHash = [UInt8](sha1.finalize())
 
             case "caching_sha2_password":
                 // caching_sha2_password requires a SSL/TLS connection.
@@ -214,14 +226,23 @@ extension MySQLProtocolHandler {
                 }
 
                 // Encryption is XOR(SHA256(password), SHA256(seed, SHA256(SHA256(password))))
-                passwordHash = password.bytes.sha256()
-                saltedHash = (seed + passwordHash.sha256()).sha256()
+                var sha256 = SHA256()
+                sha256.update(data: Data(password.utf8))
+                passwordHash1 = [UInt8](sha256.finalize())
+
+                sha256 = SHA256()
+                sha256.update(data: Data(passwordHash1))
+                passwordHash2 = [UInt8](sha256.finalize())
+
+                sha256 = SHA256()
+                sha256.update(data: Data(seed + passwordHash2))
+                saltedHash = [UInt8](sha256.finalize())
 
             default:
                 return context.channel.eventLoop.makeFailedFuture(SQLError.protocolError)
             }
 
-            authResponse = passwordHash.enumerated().map { $0.element ^ saltedHash[$0.offset] }
+            authResponse = passwordHash1.enumerated().map { $0.element ^ saltedHash[$0.offset] }
             response.writeInteger(authResponse.count, encoding: .fixedLength(length: 1))
             response.writeBytes(authResponse)
 
